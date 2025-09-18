@@ -9,25 +9,32 @@
 	],
 	"contact": {
 		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"sources": "https://github.com/StrangeQuark/quarkmod"
 	},
 	"license": "CC0-1.0",
 	"icon": "assets/quarkmod/icon.png",
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"com.strangequark.quarkmod.QuarkMod"
+          "com.strangequark.QuarkMod"
 		],
-		"fabric-datagen": [
-			"com.strangequark.quarkmod.QuarkModDataGenerator"
-		]
+		"client": [
+			"com.strangequark.ExampleModClient"
+		],
+        "fabric-datagen": [
+          "com.strangequark.QuarkModDataGenerator"
+        ]
 	},
 	"mixins": [
-		"quarkmod.mixins.json"
+		"quarkmod.mixins.json",
+		{
+			"config": "quarkmod.client.mixins.json",
+			"environment": "client"
+		}
 	],
 	"depends": {
-		"fabricloader": ">=0.16.5",
-		"minecraft": "~1.21.1",
+		"fabricloader": ">=0.16.14",
+		"minecraft": "~1.21.8",
 		"java": ">=21",
 		"fabric-api": "*"
 	},
