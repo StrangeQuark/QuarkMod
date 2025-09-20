@@ -7,17 +7,21 @@ import net.fabricmc.api.ModInitializer;
 
 import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
+import net.minecraft.enchantment.Enchantment;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.loot.LootPool;
 import net.minecraft.loot.LootTable;
+import net.minecraft.loot.LootTables;
 import net.minecraft.loot.condition.RandomChanceLootCondition;
 import net.minecraft.loot.entry.ItemEntry;
+import net.minecraft.loot.function.SetEnchantmentsLootFunction;
 import net.minecraft.loot.provider.number.ConstantLootNumberProvider;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
@@ -54,6 +58,20 @@ public class QuarkMod implements ModInitializer {
                 for (Item egg : spawnEggs) {
                     pool.with(ItemEntry.builder(egg).weight(1));
                 }
+
+                tableBuilder.pool(pool);
+            }
+
+            // Give the Excavator enchantment a 15% chance to spawn in ancient city chests
+            if(source.isBuiltin() && key.equals(LootTables.ANCIENT_CITY_CHEST)) {
+                RegistryEntry<Enchantment> excavatorEntry = registries.getEntryOrThrow(ModEnchantments.EXCAVATOR);
+
+                LootPool.Builder pool = LootPool.builder()
+                        .rolls(ConstantLootNumberProvider.create(1))
+                        .conditionally(RandomChanceLootCondition.builder(0.15f))
+                        .with(ItemEntry.builder(Items.ENCHANTED_BOOK)
+                                .apply(new SetEnchantmentsLootFunction.Builder()
+                                        .enchantment(excavatorEntry, ConstantLootNumberProvider.create(1))));
 
                 tableBuilder.pool(pool);
             }
