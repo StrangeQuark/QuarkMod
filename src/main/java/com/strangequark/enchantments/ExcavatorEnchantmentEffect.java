@@ -1,6 +1,7 @@
 package com.strangequark.enchantments;
 
 import com.mojang.serialization.MapCodec;
+import net.minecraft.block.Blocks;
 import net.minecraft.enchantment.EnchantmentEffectContext;
 import net.minecraft.enchantment.effect.EnchantmentEntityEffect;
 import net.minecraft.entity.Entity;
@@ -35,7 +36,8 @@ public record ExcavatorEnchantmentEffect() implements EnchantmentEntityEffect {
                 for (int dx = -1; dx <= 1; dx++) {
                     for (int dz = -1; dz <= 1; dz++) {
                         mutablePos.set(center.getX() + dx, center.getY(), center.getZ() + dz);
-                        if (!mutablePos.equals(center) && !world.isAir(mutablePos)) {
+                        if (!mutablePos.equals(center) && !world.isAir(mutablePos) &&
+                                world.getBlockState(mutablePos).getBlock() != Blocks.BEDROCK) {
                             world.breakBlock(mutablePos, true, player);
                         }
                     }
@@ -45,7 +47,8 @@ public record ExcavatorEnchantmentEffect() implements EnchantmentEntityEffect {
                 for (int dx = -1; dx <= 1; dx++) {
                     for (int dy = -1; dy <= 1; dy++) {
                         mutablePos.set(center.getX() + dx, center.getY() + dy, center.getZ());
-                        if (!mutablePos.equals(center) && !world.isAir(mutablePos)) {
+                        if (!mutablePos.equals(center) && !world.isAir(mutablePos) &&
+                                world.getBlockState(mutablePos).getBlock() != Blocks.BEDROCK) {
                             world.breakBlock(mutablePos, true, player);
                         }
                     }
@@ -55,7 +58,8 @@ public record ExcavatorEnchantmentEffect() implements EnchantmentEntityEffect {
                 for (int dy = -1; dy <= 1; dy++) {
                     for (int dz = -1; dz <= 1; dz++) {
                         mutablePos.set(center.getX(), center.getY() + dy, center.getZ() + dz);
-                        if (!mutablePos.equals(center) && !world.isAir(mutablePos)) {
+                        if (!mutablePos.equals(center) && !world.isAir(mutablePos) &&
+                                world.getBlockState(mutablePos).getBlock() != Blocks.BEDROCK) {
                             world.breakBlock(mutablePos, true, player);
                         }
                     }
