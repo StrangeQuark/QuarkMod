@@ -9,7 +9,6 @@ import net.minecraft.registry.RegistryEntryLookup;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.registry.tag.EnchantmentTags;
 import net.minecraft.registry.tag.ItemTags;
 import net.minecraft.util.Identifier;
 
@@ -18,7 +17,6 @@ public class ModEnchantments {
     public static RegistryEntry<Enchantment> EXCAVATOR_ENTRY;
 
     public static void bootstrap(Registerable<Enchantment> registerable) {
-        RegistryEntryLookup<Enchantment> enchantments = registerable.getRegistryLookup(RegistryKeys.ENCHANTMENT);
         RegistryEntryLookup<Item> items = registerable.getRegistryLookup(RegistryKeys.ITEM);
 
         register(registerable, EXCAVATOR, Enchantment.builder(Enchantment.definition(
@@ -29,7 +27,6 @@ public class ModEnchantments {
                 Enchantment.leveledCost(25, 9),
                 2,
                 AttributeModifierSlot.MAINHAND))
-                .exclusiveSet(enchantments.getOrThrow(EnchantmentTags.MINING_EXCLUSIVE_SET))
         );
 
         EXCAVATOR_ENTRY = registerable.getRegistryLookup(RegistryKeys.ENCHANTMENT).getOrThrow(EXCAVATOR);
