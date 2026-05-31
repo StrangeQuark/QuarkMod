@@ -3,12 +3,12 @@
 	"id": "quarkmod",
 	"version": "${version}",
 	"name": "QuarkMod",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"description": "A Fabric mod that adds the Excavator enchantment and small loot table changes.",
 	"authors": [
-		"Me!"
+		"StrangeQuark"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
+		"homepage": "https://github.com/StrangeQuark/quarkmod",
 		"sources": "https://github.com/StrangeQuark/quarkmod"
 	},
 	"license": "CC0-1.0",
@@ -16,29 +16,16 @@
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-          "com.strangequark.QuarkMod"
+			"com.strangequark.QuarkMod"
 		],
-		"client": [
-			"com.strangequark.ExampleModClient"
-		],
-        "fabric-datagen": [
-          "com.strangequark.QuarkModDataGenerator"
-        ]
+		"fabric-datagen": [
+			"com.strangequark.QuarkModDataGenerator"
+		]
 	},
-	"mixins": [
-		"quarkmod.mixins.json",
-		{
-			"config": "quarkmod.client.mixins.json",
-			"environment": "client"
-		}
-	],
 	"depends": {
 		"fabricloader": ">=0.16.14",
 		"minecraft": "~1.21.8",
 		"java": ">=21",
 		"fabric-api": "*"
-	},
-	"suggests": {
-		"another-mod": "*"
 	}
 }

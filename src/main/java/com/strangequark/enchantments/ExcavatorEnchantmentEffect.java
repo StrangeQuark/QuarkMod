@@ -8,6 +8,7 @@ import net.minecraft.enchantment.effect.EnchantmentEntityEffect;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
@@ -37,7 +38,11 @@ public record ExcavatorEnchantmentEffect() implements EnchantmentEntityEffect {
 
     @Override
     public void apply(ServerWorld world, int level, EnchantmentEffectContext context, Entity user, Vec3d pos) {
-        mine3x3(world, BlockPos.ofFloored(pos), (PlayerEntity) user);
+        if (!(user instanceof PlayerEntity player)) {
+            return;
+        }
+
+        mine3x3(world, BlockPos.ofFloored(pos), player);
     }
 
     @Override
@@ -46,7 +51,11 @@ public record ExcavatorEnchantmentEffect() implements EnchantmentEntityEffect {
     }
 
     public static void mine3x3(ServerWorld world, BlockPos center, PlayerEntity player) {
-        BlockHitResult blockHitResult = (BlockHitResult) player.raycast(5.0, 0.0f, false);
+        HitResult hitResult = player.raycast(5.0, 0.0f, false);
+        if (!(hitResult instanceof BlockHitResult blockHitResult)) {
+            return;
+        }
+
         Direction facing = blockHitResult.getSide();
 
         BlockPos.Mutable mutablePos = new BlockPos.Mutable();

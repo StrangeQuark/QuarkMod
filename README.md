@@ -1,9 +1,29 @@
-# Fabric Example Mod
+# QuarkMod
 
-## Setup
+QuarkMod is a Fabric mod for Minecraft 1.21.8.
 
-For setup instructions please see the [fabric documentation page](https://docs.fabricmc.net/develop/getting-started/setting-up-a-development-environment) that relates to the IDE that you are using.
+## Features
+
+- Adds the Excavator enchantment for pickaxes.
+- Mines a 3x3 area around compatible blocks when using Excavator.
+- Makes spawners drop themselves.
+- Adds a chance for spawn eggs to appear in chest loot.
+- Adds a chance for Excavator enchanted books to appear in ancient city chests.
+
+## Development
+
+Build the mod:
+
+```sh
+./gradlew build
+```
+
+Run data generation:
+
+```sh
+./gradlew runDatagen
+```
 
 ## License
 
-This template is available under the CC0 license. Feel free to learn from it and incorporate it in your own projects.
+QuarkMod is licensed under CC0-1.0. See [LICENSE](LICENSE).

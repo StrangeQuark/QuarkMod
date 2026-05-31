@@ -78,6 +78,10 @@ public class QuarkMod implements ModInitializer {
         });
 
         PlayerBlockBreakEvents.BEFORE.register((world, player, pos, state, blockEntity) -> {
+            if (!(world instanceof ServerWorld serverWorld)) {
+                return true;
+            }
+
             ItemStack held = player.getMainHandStack();
 
             boolean hasExcavator = held.getEnchantments()
@@ -86,7 +90,7 @@ public class QuarkMod implements ModInitializer {
                     .anyMatch(entry -> entry.getKey().get().getValue().equals(ModEnchantments.EXCAVATOR.getValue()));
 
             if (hasExcavator) {
-                ExcavatorEnchantmentEffect.mine3x3((ServerWorld) world, pos, player);
+                ExcavatorEnchantmentEffect.mine3x3(serverWorld, pos, player);
             }
             return true;
         });
