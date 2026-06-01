@@ -33,14 +33,17 @@ import java.util.UUID;
 public class GrapplingHookEntity extends PersistentProjectileEntity implements FlyingItemEntity {
     private static final Map<UUID, Integer> ACTIVE_HOOKS = new HashMap<>();
     private static final double DEFAULT_RANGE = 10.0D;
+    private static final double HAND_GRAVITY = 0.15D;
+    private static final double CROSSBOW_GRAVITY = 0.155D;
     private static final double ROPE_CORRECTION = 0.08D;
     private static final double MAX_ROPE_CORRECTION = 0.12D;
     private static final double REEL_PULL = 0.2D;
     private static final double MAX_REEL_SPEED = 1.2D;
     private static final double REEL_HOLD_RADIUS = 1.0D;
-    private static final double REEL_HOLD_CORRECTION = 0.12D;
-    private static final double MAX_REEL_HOLD_CORRECTION = 0.12D;
-    private static final double REEL_SETTLE_DISTANCE = 1.25D;
+    private static final double MIN_REEL_HOLD_SPEED = 0.08D;
+    private static final double REEL_HOLD_CORRECTION = 0.35D;
+    private static final double MAX_REEL_HOLD_SPEED = 0.32D;
+    private static final double REEL_SETTLE_DISTANCE = REEL_HOLD_RADIUS;
     private static final double REEL_COLLISION_SETTLE_DISTANCE = 2.25D;
     private static final int MIN_REEL_TICKS_BEFORE_COLLISION_SETTLE = 4;
     private static final TrackedData<Boolean> HOOKED =
@@ -229,7 +232,11 @@ public class GrapplingHookEntity extends PersistentProjectileEntity implements F
 
     @Override
     protected double getGravity() {
-        return this.isHooked() ? 0.0D : 0.03D;
+        if (this.isHooked()) {
+            return 0.0D;
+        }
+
+        return this.useMode == UseMode.HAND ? HAND_GRAVITY : CROSSBOW_GRAVITY;
     }
 
     @Override
@@ -343,15 +350,16 @@ public class GrapplingHookEntity extends PersistentProjectileEntity implements F
 
         if (this.isReeling()) {
             this.reelingTicks++;
+
+            if (distance <= REEL_SETTLE_DISTANCE || this.shouldSettleAfterCollision(player, distance)) {
+                settleAtAnchor(player, velocity);
+                return;
+            }
+
             double radialSpeed = velocity.dotProduct(direction);
             if (radialSpeed < 0.0D) {
                 velocity = velocity.subtract(direction.multiply(radialSpeed));
                 radialSpeed = 0.0D;
-            }
-
-            if (distance <= REEL_SETTLE_DISTANCE || this.shouldSettleAfterCollision(player, distance)) {
-                settleAtAnchor(player, direction, velocity);
-                return;
             }
 
             double pull = Math.max(0.0D, Math.min(REEL_PULL, MAX_REEL_SPEED - radialSpeed));
@@ -384,13 +392,10 @@ public class GrapplingHookEntity extends PersistentProjectileEntity implements F
                 && this.isBlockedByAnchorSurface(player);
     }
 
-    private void settleAtAnchor(PlayerEntity player, Vec3d direction, Vec3d velocity) {
+    private void settleAtAnchor(PlayerEntity player, Vec3d velocity) {
         this.reelHolding = this.useMode == UseMode.REEL_CROSSBOW && this.reelTriggered;
         if (this.isBlockedByAnchorSurface(player)) {
-            double inwardSpeed = velocity.dotProduct(direction);
-            if (inwardSpeed > 0.0D) {
-                velocity = velocity.subtract(direction.multiply(inwardSpeed));
-            }
+            velocity = this.removeVelocityIntoAnchorSurface(velocity);
         }
 
         player.setVelocity(velocity);
@@ -404,8 +409,6 @@ public class GrapplingHookEntity extends PersistentProjectileEntity implements F
         Vec3d toAnchor = this.anchorPos.subtract(playerAnchor);
         double distance = toAnchor.length();
         if (distance < 0.01D) {
-            player.setVelocity(Vec3d.ZERO);
-            player.velocityModified = true;
             player.fallDistance = 0.0D;
             return;
         }
@@ -415,16 +418,13 @@ public class GrapplingHookEntity extends PersistentProjectileEntity implements F
         if (stretch > 0.0D) {
             Vec3d direction = toAnchor.normalize();
             double radialSpeed = velocity.dotProduct(direction);
-            if (radialSpeed < 0.0D) {
-                velocity = velocity.subtract(direction.multiply(radialSpeed));
+            double targetInwardSpeed = Math.min(MAX_REEL_HOLD_SPEED, Math.max(MIN_REEL_HOLD_SPEED, stretch * REEL_HOLD_CORRECTION));
+            if (radialSpeed < targetInwardSpeed) {
+                velocity = velocity.add(direction.multiply(targetInwardSpeed - radialSpeed));
             }
 
             if (this.isBlockedByAnchorSurface(player)) {
-                if (radialSpeed > 0.0D) {
-                    velocity = velocity.subtract(direction.multiply(radialSpeed));
-                }
-            } else {
-                velocity = velocity.add(direction.multiply(Math.min(stretch * REEL_HOLD_CORRECTION, MAX_REEL_HOLD_CORRECTION)));
+                velocity = this.removeVelocityIntoAnchorSurface(velocity);
             }
             player.setVelocity(velocity);
             player.velocityModified = true;
@@ -435,6 +435,12 @@ public class GrapplingHookEntity extends PersistentProjectileEntity implements F
 
     private boolean isBlockedByAnchorSurface(PlayerEntity player) {
         return player.horizontalCollision || (player.verticalCollision && !player.isOnGround());
+    }
+
+    private Vec3d removeVelocityIntoAnchorSurface(Vec3d velocity) {
+        Vec3d surfaceNormal = this.getAnchorSide().getDoubleVector();
+        double surfaceSpeed = velocity.dotProduct(surfaceNormal);
+        return surfaceSpeed < 0.0D ? velocity.subtract(surfaceNormal.multiply(surfaceSpeed)) : velocity;
     }
 
     private Vec3d getOwnerPos() {
