@@ -1,0 +1,11 @@
+{
+  "values": [
+    "quarkmod:wooden_grappling_hook",
+    "quarkmod:golden_grappling_hook",
+    "quarkmod:stone_grappling_hook",
+    "quarkmod:copper_grappling_hook",
+    "quarkmod:iron_grappling_hook",
+    "quarkmod:diamond_grappling_hook",
+    "quarkmod:netherite_grappling_hook"
+  ]
+}

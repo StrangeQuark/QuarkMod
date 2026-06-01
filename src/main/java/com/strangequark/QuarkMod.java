@@ -3,6 +3,8 @@ package com.strangequark;
 import com.strangequark.enchantments.ExcavatorEnchantmentEffect;
 import com.strangequark.enchantments.ModEnchantmentEffects;
 import com.strangequark.enchantments.ModEnchantments;
+import com.strangequark.entity.ModEntities;
+import com.strangequark.item.ModItems;
 import net.fabricmc.api.ModInitializer;
 
 import net.fabricmc.fabric.api.loot.v3.LootTableEvents;
@@ -37,6 +39,9 @@ public class QuarkMod implements ModInitializer {
 
     @Override
 	public void onInitialize() {
+        ModEntities.registerModEntities();
+        ModItems.registerModItems();
+
         LootTableEvents.MODIFY.register((key, tableBuilder, source, registries) -> {
             // Allow spawners to be mined
             if(source.isBuiltin() && key.equals(SPAWNER_LOOT_KEY)) {
@@ -72,6 +77,15 @@ public class QuarkMod implements ModInitializer {
                         .with(ItemEntry.builder(Items.ENCHANTED_BOOK)
                                 .apply(new SetEnchantmentsLootFunction.Builder()
                                         .enchantment(excavatorEntry, ConstantLootNumberProvider.create(1))));
+
+                tableBuilder.pool(pool);
+            }
+
+            // Always place a grappling hook reel in pillager outpost tower chests
+            if(source.isBuiltin() && key.equals(LootTables.PILLAGER_OUTPOST_CHEST)) {
+                LootPool.Builder pool = LootPool.builder()
+                        .rolls(ConstantLootNumberProvider.create(1))
+                        .with(ItemEntry.builder(ModItems.GRAPPLING_HOOK_REEL));
 
                 tableBuilder.pool(pool);
             }
