@@ -3,7 +3,7 @@
 	"id": "quarkmod",
 	"version": "${version}",
 	"name": "QuarkMod",
-	"description": "A Fabric mod that adds the Excavator enchantment and small loot table changes.",
+	"description": "A Fabric mod that adds the Excavator enchantment, grappling hooks, and small loot table changes.",
 	"authors": [
 		"StrangeQuark"
 	],
@@ -17,6 +17,9 @@
 	"entrypoints": {
 		"main": [
 			"com.strangequark.QuarkMod"
+		],
+		"client": [
+			"com.strangequark.client.QuarkModClient"
 		],
 		"fabric-datagen": [
 			"com.strangequark.QuarkModDataGenerator"

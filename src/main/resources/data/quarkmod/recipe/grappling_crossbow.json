@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "equipment",
+  "ingredients": [
+    "minecraft:crossbow",
+    "quarkmod:grappling_hook_reel"
+  ],
+  "result": {
+    "count": 1,
+    "id": "quarkmod:grappling_crossbow"
+  }
+}
