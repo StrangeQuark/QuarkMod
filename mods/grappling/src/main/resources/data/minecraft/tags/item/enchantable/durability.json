@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    "#quarkmod:grappling_hooks",
+    "quarkmod:grappling_crossbow"
+  ]
+}

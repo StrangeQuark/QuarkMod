@@ -1,64 +1,149 @@
 plugins {
-	id 'fabric-loom' version "${loom_version}"
-	id 'maven-publish'
+	id 'fabric-loom' version "${loom_version}" apply false
 }
 
-version = project.mod_version
-group = project.maven_group
+def archivesByProject = [
+		'grappling'      : 'quarkmod-grappling',
+		'excavator'     : 'quarkmod-excavator',
+		'loot-tweaks'   : 'quarkmod-loot-tweaks',
+		'large-villages': 'quarkmod-large-villages',
+		'quarkmod'      : project.archives_base_name
+]
 
-base {
-	archivesName = project.archives_base_name
-}
+def featureProjects = [
+		project(':grappling'),
+		project(':excavator'),
+		project(':loot-tweaks'),
+		project(':large-villages')
+]
 
-repositories {
-}
+def loomProjects = featureProjects + project(':quarkmod')
 
-fabricApi {
-	configureDataGeneration()
-}
+configure(loomProjects) {
+	apply plugin: 'fabric-loom'
+	apply plugin: 'maven-publish'
 
-dependencies {
-	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-}
+	version = rootProject.mod_version
+	group = rootProject.maven_group
 
-processResources {
-	inputs.property "version", project.version
-
-	filesMatching("fabric.mod.json") {
-		expand "version": inputs.properties.version
-	}
-}
-
-tasks.withType(JavaCompile).configureEach {
-	it.options.release = 21
-}
-
-java {
-	withSourcesJar()
-
-	sourceCompatibility = JavaVersion.VERSION_21
-	targetCompatibility = JavaVersion.VERSION_21
-}
-
-jar {
-	inputs.property "archivesName", project.base.archivesName
-
-	from("LICENSE") {
-		rename { "${it}_${inputs.properties.archivesName}"}
-	}
-}
-
-publishing {
-	publications {
-		create("mavenJava", MavenPublication) {
-			artifactId = project.archives_base_name
-			from components.java
-		}
+	base {
+		archivesName = archivesByProject[project.name]
 	}
 
 	repositories {
+	}
+
+	fabricApi {
+		configureDataGeneration()
+	}
+
+	dependencies {
+		minecraft "com.mojang:minecraft:${rootProject.minecraft_version}"
+		mappings "net.fabricmc:yarn:${rootProject.yarn_mappings}:v2"
+		modImplementation "net.fabricmc:fabric-loader:${rootProject.loader_version}"
+		modImplementation "net.fabricmc.fabric-api:fabric-api:${rootProject.fabric_version}"
+	}
+
+	processResources {
+		inputs.property "version", project.version
+
+		filesMatching("fabric.mod.json") {
+			expand "version": inputs.properties.version
+		}
+	}
+
+	tasks.withType(JavaCompile).configureEach {
+		it.options.release = 21
+	}
+
+	java {
+		withSourcesJar()
+
+		sourceCompatibility = JavaVersion.VERSION_21
+		targetCompatibility = JavaVersion.VERSION_21
+	}
+
+	jar {
+		inputs.property "archivesName", project.base.archivesName
+
+		from(rootProject.file("LICENSE")) {
+			rename { "${it}_${inputs.properties.archivesName}" }
+		}
+	}
+
+	publishing {
+		publications {
+			create("mavenJava", MavenPublication) {
+				artifactId = project.base.archivesName.get()
+				from components.java
+			}
+		}
+
+		repositories {
+		}
+	}
+}
+
+project(':quarkmod') {
+	loom {
+		mods {
+			quarkmod {
+				sourceSet sourceSets.main
+			}
+			quarkmod_grappling {
+				sourceSet 'main', project(':grappling')
+			}
+			quarkmod_excavator {
+				sourceSet 'main', project(':excavator')
+			}
+			quarkmod_loot_tweaks {
+				sourceSet 'main', project(':loot-tweaks')
+			}
+			quarkmod_large_villages {
+				sourceSet 'main', project(':large-villages')
+			}
+		}
+	}
+
+	jar {
+		inputs.property "archivesName", project.base.archivesName
+		dependsOn featureProjects.collect { it.tasks.named('remapJar') }
+
+		featureProjects.each { featureProject ->
+			from(featureProject.tasks.named('remapJar').flatMap { it.archiveFile }) {
+				into 'META-INF/jars'
+			}
+		}
+	}
+
+	tasks.matching { it.name in ['runClient', 'runServer'] }.configureEach {
+		featureProjects.each { featureProject ->
+			dependsOn featureProject.tasks.named('classes')
+			classpath featureProject.sourceSets.main.output
+		}
+	}
+}
+
+featureProjects.each { featureProject ->
+	def runNamePrefix = featureProject.name.split('-').collect { part ->
+		part.substring(0, 1).toUpperCase() + part.substring(1)
+	}.join('')
+
+	featureProject.loom.runs {
+		"${runNamePrefix}Client" {
+			inherit client
+			name "Minecraft Client (${featureProject.name} only)"
+			ideConfigGenerated false
+		}
+		"${runNamePrefix}Server" {
+			inherit server
+			name "Minecraft Server (${featureProject.name} only)"
+			ideConfigGenerated false
+		}
+	}
+
+	featureProject.tasks.matching { it.name in ['runClient', 'runServer'] }.configureEach {
+		enabled = false
+		description = "Disabled so root run tasks do not launch every feature module. Use :quarkmod:${name} for the full bundle, or run${runNamePrefix}${name - 'run'} for this module only."
 	}
 }

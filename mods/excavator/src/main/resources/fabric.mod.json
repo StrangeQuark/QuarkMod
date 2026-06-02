@@ -1,0 +1,31 @@
+{
+	"schemaVersion": 1,
+	"id": "quarkmod_excavator",
+	"version": "${version}",
+	"name": "QuarkMod: Excavator",
+	"description": "The QuarkMod Excavator enchantment feature module.",
+	"authors": [
+		"StrangeQuark"
+	],
+	"contact": {
+		"homepage": "https://github.com/StrangeQuark/quarkmod",
+		"sources": "https://github.com/StrangeQuark/quarkmod"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/quarkmod/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.strangequark.excavator.ExcavatorMod"
+		],
+		"fabric-datagen": [
+			"com.strangequark.excavator.ExcavatorDataGenerator"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.16.14",
+		"minecraft": "~1.21.8",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
