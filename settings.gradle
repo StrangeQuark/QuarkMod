@@ -8,3 +8,17 @@ pluginManagement {
 		gradlePluginPortal()
 	}
 }
+
+rootProject.name = 'quarkmod'
+
+include 'grappling'
+include 'excavator'
+include 'loot-tweaks'
+include 'large-villages'
+include 'quarkmod'
+
+project(':grappling').projectDir = file('mods/grappling')
+project(':excavator').projectDir = file('mods/excavator')
+project(':loot-tweaks').projectDir = file('mods/loot-tweaks')
+project(':large-villages').projectDir = file('mods/large-villages')
+project(':quarkmod').projectDir = file('mods/quarkmod')

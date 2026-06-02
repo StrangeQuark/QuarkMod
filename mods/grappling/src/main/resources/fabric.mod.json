@@ -1,0 +1,31 @@
+{
+	"schemaVersion": 1,
+	"id": "quarkmod_grappling",
+	"version": "${version}",
+	"name": "QuarkMod: Grappling",
+	"description": "The QuarkMod grappling hooks and grappling crossbow feature module.",
+	"authors": [
+		"StrangeQuark"
+	],
+	"contact": {
+		"homepage": "https://github.com/StrangeQuark/quarkmod",
+		"sources": "https://github.com/StrangeQuark/quarkmod"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/quarkmod/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.strangequark.grappling.GrapplingMod"
+		],
+		"client": [
+			"com.strangequark.grappling.client.GrapplingModClient"
+		]
+	},
+	"depends": {
+		"fabricloader": ">=0.16.14",
+		"minecraft": "~1.21.8",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
