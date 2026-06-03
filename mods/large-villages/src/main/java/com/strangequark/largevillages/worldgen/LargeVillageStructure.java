@@ -31,19 +31,24 @@ import java.util.Set;
 public class LargeVillageStructure extends Structure {
     private static final int ROAD_TILE_LENGTH = 8;
     private static final int ROAD_HALF_WIDTH = 2;
-    private static final int MIN_ROAD_SEGMENT_LENGTH = 16;
     private static final int MAX_ROAD_SEGMENT_LENGTH = 40;
-    private static final int MIN_PRIMARY_ROAD_SEGMENT_LENGTH = 24;
-    private static final int MAX_PRIMARY_ROAD_SEGMENT_LENGTH = 48;
     private static final int NORMAL_VILLAGE_RADIUS = 80;
     private static final int LARGE_VILLAGE_RADIUS = 200;
     private static final int START_TERRAIN_RADIUS = 64;
     private static final int LOCATE_TERRAIN_RADIUS = 48;
     private static final int MAX_ROAD_SEGMENTS = 100;
     private static final int LOT_CLEARANCE_FROM_TOWN_HALL = 42;
+    private static final int CORE_ROAD_OFFSET = 40;
+    private static final int DISTRICT_RING_SPACING = 40;
+    private static final int INNER_LOT_SPACING = 13;
+    private static final int OUTER_LOT_SPACING = 16;
+    private static final int LOT_SETBACK_MIN = 11;
+    private static final int LOT_SETBACK_RANDOM = 5;
     private static final int MAX_BUILDING_DISTANCE_FROM_ROAD = 10;
     private static final int ROAD_CONFLICT_PADDING = 2;
     private static final int MIN_ACCEPTED_BUILDINGS = 48;
+    private static final int LOT_TARGET_MIN_BUFFER = 16;
+    private static final int LOT_TARGET_BUFFER_DIVISOR = 4;
     private static final int VANILLA_FARM_CHANCE_PERCENT = 5;
     private static final int VANILLA_FARM_PATCH_DIVISOR = 30;
 
@@ -164,30 +169,30 @@ public class LargeVillageStructure extends Structure {
     private Optional<VillageLayout> generateVillageLayout(Context context, BlockPos center, int radius, int targetBuildings, Random random) {
         Set<Point> nodes = new HashSet<>();
         Set<RoadSegment> segments = new HashSet<>();
-        List<RoadTip> branchTips = new ArrayList<>();
         List<Lot> lots = new ArrayList<>();
         Point origin = new Point(0, 0);
         nodes.add(origin);
 
-        List<RoadDirection> primaryDirections = shuffledDirections(random);
-        int primaryCount = Math.min(primaryDirections.size(), 3 + random.nextInt(2));
-        for (int i = 0; i < primaryCount; i++) {
-            growLotRoad(context, center, radius, random, primaryDirections.get(i), nodes, segments, lots, branchTips);
-        }
-
-        int maxDistance = maxNodeDistance(nodes);
-        if (maxDistance < minRadius / 2) {
+        int layoutRadius = chooseLayoutRadius(radius, targetBuildings);
+        int targetLots = chooseTargetLotCount(targetBuildings);
+        List<Integer> rings = districtRings(layoutRadius);
+        if (rings.isEmpty()) {
             return Optional.empty();
         }
 
-        int desiredLots = targetBuildings * 2;
-        int desiredSegments = Math.min(MAX_ROAD_SEGMENTS, Math.max(30, targetBuildings / 2));
-        int attempts = targetBuildings * 8;
-        while ((lots.size() < desiredLots || segments.size() < desiredSegments)
-                && attempts-- > 0 && !branchTips.isEmpty() && segments.size() < MAX_ROAD_SEGMENTS) {
-            RoadTip tip = branchTips.get(random.nextInt(branchTips.size()));
-            RoadDirection direction = chooseBranchDirection(tip.direction(), random);
-            growLotRoad(context, center, radius, random, tip.point(), direction, false, nodes, segments, lots, branchTips);
+        int coreSegments = addDistrictRing(context, center, radius, random, rings.get(0), true, targetLots, nodes, segments, lots);
+        if (coreSegments < 6) {
+            return Optional.empty();
+        }
+
+        for (int i = 1; i < rings.size(); i++) {
+            int previousRing = rings.get(i - 1);
+            int ring = rings.get(i);
+            addRadialConnectors(context, center, radius, random, previousRing, ring, targetLots, nodes, segments, lots);
+            addDistrictRing(context, center, radius, random, ring, false, targetLots, nodes, segments, lots);
+            if (lots.size() >= targetLots) {
+                break;
+            }
         }
 
         List<RoadSegment> usefulSegments = pruneRoadsWithoutLots(segments, lots);
@@ -200,63 +205,198 @@ public class LargeVillageStructure extends Structure {
         return Optional.of(new VillageLayout(new RoadNetwork(usefulNodes, new HashSet<>(usefulSegments)), usefulLots));
     }
 
-    private void growLotRoad(
+    private int chooseLayoutRadius(int radius, int targetBuildings) {
+        int desiredRadius = CORE_ROAD_OFFSET + DISTRICT_RING_SPACING + targetBuildings / 2;
+        int radiusCap = Math.max(CORE_ROAD_OFFSET, Math.min(radius, desiredRadius));
+        return Math.max(CORE_ROAD_OFFSET, (radiusCap / ROAD_TILE_LENGTH) * ROAD_TILE_LENGTH);
+    }
+
+    private static int chooseTargetLotCount(int targetBuildings) {
+        return targetBuildings + Math.max(LOT_TARGET_MIN_BUFFER, targetBuildings / LOT_TARGET_BUFFER_DIVISOR);
+    }
+
+    private static List<Integer> districtRings(int layoutRadius) {
+        List<Integer> rings = new ArrayList<>();
+        for (int ring = CORE_ROAD_OFFSET; ring <= layoutRadius; ring += DISTRICT_RING_SPACING) {
+            rings.add(ring);
+        }
+        return rings;
+    }
+
+    private int addDistrictRing(
             Context context,
             BlockPos center,
             int radius,
             Random random,
-            RoadDirection initialDirection,
+            int ring,
+            boolean core,
+            int targetLots,
             Set<Point> nodes,
             Set<RoadSegment> segments,
-            List<Lot> lots,
-            List<RoadTip> branchTips
+            List<Lot> lots
     ) {
-        growLotRoad(context, center, radius, random, new Point(0, 0), initialDirection, true, nodes, segments, lots, branchTips);
+        int added = 0;
+        Point northWest = new Point(-ring, -ring);
+        Point north = new Point(0, -ring);
+        Point northEast = new Point(ring, -ring);
+        Point east = new Point(ring, 0);
+        Point southEast = new Point(ring, ring);
+        Point south = new Point(0, ring);
+        Point southWest = new Point(-ring, ring);
+        Point west = new Point(-ring, 0);
+
+        List<RoadEdge> edges = new ArrayList<>(List.of(
+                new RoadEdge(northWest, north),
+                new RoadEdge(north, northEast),
+                new RoadEdge(northEast, east),
+                new RoadEdge(east, southEast),
+                new RoadEdge(south, southEast),
+                new RoadEdge(southWest, south),
+                new RoadEdge(southWest, west),
+                new RoadEdge(west, northWest)
+        ));
+        shuffle(edges, random);
+        for (RoadEdge edge : edges) {
+            added += addPlannedRoadWithLots(context, center, radius, random, edge.start(), edge.end(), core, targetLots, nodes, segments, lots);
+        }
+        return added;
     }
 
-    private void growLotRoad(
+    private int addRadialConnectors(
+            Context context,
+            BlockPos center,
+            int radius,
+            Random random,
+            int innerRing,
+            int outerRing,
+            int targetLots,
+            Set<Point> nodes,
+            Set<RoadSegment> segments,
+            List<Lot> lots
+    ) {
+        int added = 0;
+        added += addPlannedRoadWithLots(context, center, radius, random, new Point(0, -innerRing), new Point(0, -outerRing),
+                false, targetLots, nodes, segments, lots);
+        added += addPlannedRoadWithLots(context, center, radius, random, new Point(innerRing, 0), new Point(outerRing, 0),
+                false, targetLots, nodes, segments, lots);
+        added += addPlannedRoadWithLots(context, center, radius, random, new Point(0, innerRing), new Point(0, outerRing),
+                false, targetLots, nodes, segments, lots);
+        added += addPlannedRoadWithLots(context, center, radius, random, new Point(-innerRing, 0), new Point(-outerRing, 0),
+                false, targetLots, nodes, segments, lots);
+        return added;
+    }
+
+    private int addPlannedRoadWithLots(
             Context context,
             BlockPos center,
             int radius,
             Random random,
             Point start,
-            RoadDirection initialDirection,
-            boolean primary,
+            Point end,
+            boolean core,
+            int targetLots,
             Set<Point> nodes,
             Set<RoadSegment> segments,
-            List<Lot> lots,
-            List<RoadTip> branchTips
+            List<Lot> lots
     ) {
-        Point current = start;
-        RoadDirection direction = initialDirection;
-        int maxSteps = primary ? Math.max(5, radius / 28) : 2 + random.nextInt(4);
-
-        for (int step = 0; step < maxSteps; step++) {
-            if (segments.size() >= MAX_ROAD_SEGMENTS) {
-                break;
-            }
-            if (current.distance() >= radius - 16 || (!primary && step > 1 && random.nextInt(100) < 35)) {
-                break;
-            }
-
-            int length = chooseRoadSegmentLength(random, primary ? MIN_PRIMARY_ROAD_SEGMENT_LENGTH : MIN_ROAD_SEGMENT_LENGTH,
-                    primary ? MAX_PRIMARY_ROAD_SEGMENT_LENGTH : MAX_ROAD_SEGMENT_LENGTH);
-            RoadDirection chosen = chooseWalkerDirection(context, center, radius, random, current, direction, length, primary, nodes, segments);
-            if (chosen == null) {
-                break;
-            }
-
-            if (!tryAddRoadSegment(context, center, radius, current, chosen, length, nodes, segments)) {
-                break;
-            }
-            current = current.offset(chosen, length);
-            direction = chosen;
-            addLotsForSegment(center, radius, random, new RoadSegment(current.offset(chosen.opposite(), length), current), lots);
-
-            if (primary || random.nextInt(100) < 45) {
-                branchTips.add(new RoadTip(current, direction));
-            }
+        if (!addPlannedRoadSegment(context, center, radius + DISTRICT_RING_SPACING, start, end, nodes, segments)) {
+            return 0;
         }
+
+        RoadSegment segment = new RoadSegment(start, end);
+        int[] sides = core ? new int[]{outwardSideForSegment(segment)} : shuffledSides(new int[]{-1, 1}, random);
+        int spacing = core ? INNER_LOT_SPACING : OUTER_LOT_SPACING;
+        addLotsForPlannedSegment(center, radius, random, segment, sides, spacing, targetLots, lots);
+        return 1;
+    }
+
+    private boolean addPlannedRoadSegment(
+            Context context,
+            BlockPos center,
+            int radius,
+            Point start,
+            Point end,
+            Set<Point> nodes,
+            Set<RoadSegment> segments
+    ) {
+        RoadDirection direction = directionBetween(start, end);
+        int length = Math.abs(end.x() - start.x()) + Math.abs(end.z() - start.z());
+        return length > 0 && tryAddRoadSegment(context, center, radius, start, direction, length, nodes, segments);
+    }
+
+    private void addLotsForPlannedSegment(
+            BlockPos center,
+            int radius,
+            Random random,
+            RoadSegment segment,
+            int[] sides,
+            int spacing,
+            int targetLots,
+            List<Lot> lots
+    ) {
+        int offset = 7 + random.nextInt(5);
+        while (offset < segment.length() - 4 && lots.size() < targetLots) {
+            Point roadPoint = segment.pointAlong(offset);
+            for (int side : shuffledSides(sides, random)) {
+                if (lots.size() >= targetLots) {
+                    break;
+                }
+                addRoadsideLot(lots, center, radius, random, segment, roadPoint, side);
+            }
+            offset += Math.max(ROAD_TILE_LENGTH, spacing + random.nextInt(5) - 2);
+        }
+    }
+
+    private void addRoadsideLot(
+            List<Lot> lots,
+            BlockPos center,
+            int radius,
+            Random random,
+            RoadSegment segment,
+            Point roadPoint,
+            int side
+    ) {
+        int setback = LOT_SETBACK_MIN + random.nextInt(LOT_SETBACK_RANDOM);
+        int lateral = random.nextInt(5) - 2;
+        int x;
+        int z;
+        if (segment.isHorizontal()) {
+            x = center.getX() + roadPoint.x() + lateral;
+            z = center.getZ() + roadPoint.z() + side * setback;
+        } else {
+            x = center.getX() + roadPoint.x() + side * setback;
+            z = center.getZ() + roadPoint.z() + lateral;
+        }
+        addLotIfValid(lots, center, radius, x, z, segment.direction(), side, roadPoint);
+    }
+
+    private static int outwardSideForSegment(RoadSegment segment) {
+        Point midpoint = segment.pointAlong(segment.length() / 2);
+        if (segment.isHorizontal()) {
+            return midpoint.z() >= 0 ? 1 : -1;
+        }
+        return midpoint.x() >= 0 ? 1 : -1;
+    }
+
+    private static int[] shuffledSides(int[] sides, Random random) {
+        int[] shuffled = sides.clone();
+        for (int i = shuffled.length - 1; i > 0; i--) {
+            int j = random.nextInt(i + 1);
+            int side = shuffled[i];
+            shuffled[i] = shuffled[j];
+            shuffled[j] = side;
+        }
+        return shuffled;
+    }
+
+    private static RoadDirection directionBetween(Point start, Point end) {
+        if (start.x() == end.x()) {
+            return start.z() < end.z() ? RoadDirection.SOUTH : RoadDirection.NORTH;
+        }
+        if (start.z() == end.z()) {
+            return start.x() < end.x() ? RoadDirection.EAST : RoadDirection.WEST;
+        }
+        throw new IllegalArgumentException("Large village roads must be axis-aligned");
     }
 
     private boolean tryAddRoadSegment(
@@ -338,7 +478,7 @@ public class LargeVillageStructure extends Structure {
             int targetBuildings,
             Random random
     ) {
-        shuffle(lots, random);
+        orderLotsForBuildingPlacement(lots, center, random);
         String[] buildings = buildingsForStyle(villageStyle);
         String[] farmBuildings = farmBuildingsForStyle(villageStyle);
         int maxVanillaFarmPatches = Math.max(1, targetBuildings / VANILLA_FARM_PATCH_DIVISOR);
@@ -366,6 +506,15 @@ public class LargeVillageStructure extends Structure {
         }
 
         return placed;
+    }
+
+    private static void orderLotsForBuildingPlacement(List<Lot> lots, BlockPos center, Random random) {
+        shuffle(lots, random);
+        lots.sort((first, second) -> Integer.compare(lotPlacementBand(center, first), lotPlacementBand(center, second)));
+    }
+
+    private static int lotPlacementBand(BlockPos center, Lot lot) {
+        return distanceSquared(center, lot.x(), lot.z()) / (DISTRICT_RING_SPACING * DISTRICT_RING_SPACING);
     }
 
     private int addRequiredBuildings(
@@ -447,32 +596,7 @@ public class LargeVillageStructure extends Structure {
         return new BlockPos(x, getPlacementY(context, x, z), z);
     }
 
-    private void addLotsForSegment(BlockPos center, int radius, Random random, RoadSegment segment, List<Lot> lots) {
-        int count = 2 + segment.length() / 18 + random.nextInt(2);
-        RoadDirection direction = segment.direction();
-        for (int i = 0; i < count; i++) {
-            int along = 4 + random.nextInt(Math.max(1, segment.length() - 7));
-            Point roadPoint = segment.pointAlong(along);
-            int side = random.nextBoolean() ? -1 : 1;
-            int setback = 17 + random.nextInt(8);
-            int lateral = random.nextInt(9) - 4;
-            int x;
-            int z;
-            if (segment.isHorizontal()) {
-                x = center.getX() + roadPoint.x() + lateral;
-                z = center.getZ() + roadPoint.z() + side * setback;
-            } else {
-                x = center.getX() + roadPoint.x() + side * setback;
-                z = center.getZ() + roadPoint.z() + lateral;
-            }
-            addLotIfValid(lots, center, radius, x, z, direction, side, roadPoint);
-        }
-    }
-
     private void addLotIfValid(List<Lot> lots, BlockPos center, int radius, int x, int z, RoadDirection roadDirection, int side, Point roadPoint) {
-        if (Math.abs(x - center.getX()) < 46 && Math.abs(z - center.getZ()) < 46) {
-            return;
-        }
         if (distanceSquared(center, x, z) > (radius + 18) * (radius + 18)) {
             return;
         }
@@ -533,61 +657,6 @@ public class LargeVillageStructure extends Structure {
             }
         }
         return usefulLots;
-    }
-
-    private RoadDirection chooseWalkerDirection(
-            Context context,
-            BlockPos center,
-            int radius,
-            Random random,
-            Point current,
-            RoadDirection direction,
-            int length,
-            boolean primary,
-            Set<Point> nodes,
-            Set<RoadSegment> segments
-    ) {
-        List<RoadDirection> candidates = new ArrayList<>();
-        if (random.nextInt(100) < (primary ? 72 : 54)) {
-            candidates.add(direction);
-        }
-        candidates.add(direction.perpendicular(random));
-        candidates.add(direction.perpendicular(random));
-        if (random.nextInt(100) < 18) {
-            candidates.add(direction.opposite());
-        }
-        candidates.add(direction);
-        candidates.add(RoadDirection.random(random));
-
-        for (RoadDirection candidate : candidates) {
-            if (canAddRoadSegment(context, center, radius, current, candidate, length, nodes, segments)) {
-                return candidate;
-            }
-        }
-        return null;
-    }
-
-    private boolean canAddRoadSegment(
-            Context context,
-            BlockPos center,
-            int radius,
-            Point start,
-            RoadDirection direction,
-            int length,
-            Set<Point> nodes,
-            Set<RoadSegment> segments
-    ) {
-        Point end = start.offset(direction, length);
-        if (!isWithinRadius(end, radius + MAX_ROAD_SEGMENT_LENGTH / 2)) {
-            return false;
-        }
-
-        RoadSegment segment = new RoadSegment(start, end);
-        if (segments.contains(segment) || hasRoadConflict(center, segment, segments)) {
-            return false;
-        }
-
-        return isFootprintSuitable(context, segment.footprint(center), 7, 4);
     }
 
     private static boolean hasRoadConflict(BlockPos center, RoadSegment candidate, Set<RoadSegment> existingSegments) {
@@ -1257,39 +1326,8 @@ public class LargeVillageStructure extends Structure {
         return dx * dx + dz * dz;
     }
 
-    private static int maxNodeDistance(Set<Point> nodes) {
-        int max = 0;
-        for (Point node : nodes) {
-            max = Math.max(max, node.distance());
-        }
-        return max;
-    }
-
     private static boolean isWithinRadius(Point point, int radius) {
         return point.distanceSquared() <= radius * radius;
-    }
-
-    private static RoadDirection chooseBranchDirection(RoadDirection current, Random random) {
-        int roll = random.nextInt(100);
-        if (roll < 55) {
-            return current;
-        }
-        if (roll < 88) {
-            return current.perpendicular(random);
-        }
-        return RoadDirection.random(random);
-    }
-
-    private static int chooseRoadSegmentLength(Random random, int minLength, int maxLength) {
-        int minSteps = divideRoundUp(minLength, ROAD_TILE_LENGTH);
-        int maxSteps = Math.max(minSteps, maxLength / ROAD_TILE_LENGTH);
-        return (minSteps + random.nextInt(maxSteps - minSteps + 1)) * ROAD_TILE_LENGTH;
-    }
-
-    private static List<RoadDirection> shuffledDirections(Random random) {
-        List<RoadDirection> directions = new ArrayList<>(List.of(RoadDirection.values()));
-        shuffle(directions, random);
-        return directions;
     }
 
     private static <T> void shuffle(List<T> list, Random random) {
@@ -1342,7 +1380,7 @@ public class LargeVillageStructure extends Structure {
         }
     }
 
-    private record RoadTip(Point point, RoadDirection direction) {
+    private record RoadEdge(Point start, Point end) {
     }
 
     private record Point(int x, int z) {
@@ -1490,26 +1528,6 @@ public class LargeVillageStructure extends Structure {
 
         private boolean isHorizontal() {
             return this == WEST || this == EAST;
-        }
-
-        private RoadDirection perpendicular(Random random) {
-            return switch (this) {
-                case NORTH, SOUTH -> random.nextBoolean() ? WEST : EAST;
-                case WEST, EAST -> random.nextBoolean() ? NORTH : SOUTH;
-            };
-        }
-
-        private RoadDirection opposite() {
-            return switch (this) {
-                case NORTH -> SOUTH;
-                case SOUTH -> NORTH;
-                case WEST -> EAST;
-                case EAST -> WEST;
-            };
-        }
-
-        private static RoadDirection random(Random random) {
-            return values()[random.nextInt(values().length)];
         }
     }
 }
