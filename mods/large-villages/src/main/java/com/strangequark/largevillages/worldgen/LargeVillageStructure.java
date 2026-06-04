@@ -21,6 +21,7 @@ import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.random.Random;
 import net.minecraft.world.Heightmap;
+import net.minecraft.world.biome.source.BiomeCoords;
 import net.minecraft.world.gen.chunk.VerticalBlockSample;
 import net.minecraft.world.gen.structure.Structure;
 import net.minecraft.world.gen.structure.StructureType;
@@ -99,14 +100,20 @@ public class LargeVillageStructure extends Structure {
         ChunkPos chunkPos = context.chunkPos();
         int x = chunkPos.getCenterX();
         int z = chunkPos.getCenterZ();
-        int y = getPlacementY(context, x, z);
-        BlockPos center = new BlockPos(x, y, z);
 
-        if (!isLocateAreaSuitable(context, x, z)) {
+        if (!isCenterBiomeValid(context, x, z)) {
             return Optional.empty();
         }
 
-        return Optional.of(new StructurePosition(center, collector -> createPlan(context, center)
+        TerrainSampler terrain = new TerrainSampler(context);
+        int y = terrain.getPlacementY(x, z);
+        BlockPos center = new BlockPos(x, y, z);
+
+        if (!isLocateAreaSuitable(terrain, x, z, y)) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new StructurePosition(center, collector -> createPlan(context, terrain, center)
                 .ifPresent(plan -> placePlan(collector, plan))));
     }
 
@@ -115,44 +122,45 @@ public class LargeVillageStructure extends Structure {
         return ModStructureTypes.LARGE_VILLAGE;
     }
 
-    private Optional<VillagePlan> createPlan(Context context, BlockPos center) {
+    private Optional<VillagePlan> createPlan(Context context, TerrainSampler terrain, BlockPos center) {
         Random random = context.random();
         StructureTemplateManager templateManager = context.structureTemplateManager();
+        Map<BuildingInfoKey, BuildingPlacementInfo> buildingInfoCache = new HashMap<>();
         int radius = chooseRadius(random);
         int targetBuildings = chooseTargetBuildingCount(radius, random);
         List<PiecePlan> pieces = new ArrayList<>();
         List<BlockBox> occupied = new ArrayList<>();
 
-        if (!isAreaSuitable(context, center.getX(), center.getZ(), START_TERRAIN_RADIUS, 10, 16)) {
+        if (!isAreaSuitable(terrain, center.getX(), center.getZ(), START_TERRAIN_RADIUS, 10, 16)) {
             return Optional.empty();
         }
 
-        if (!addCenteredPiece(context, templateManager, pieces, occupied, TOWN_HALL, center.getX(), center.getZ(),
+        if (!addCenteredPiece(terrain, templateManager, pieces, occupied, TOWN_HALL, center.getX(), center.getZ(),
                 BlockRotation.NONE, StructurePool.Projection.RIGID, false, 4, 10, 6)) {
             return Optional.empty();
         }
 
-        Optional<VillageLayout> layout = generateVillageLayout(context, center, radius, targetBuildings, random);
+        Optional<VillageLayout> layout = generateVillageLayout(terrain, center, radius, targetBuildings, random);
         if (layout.isEmpty()) {
             return Optional.empty();
         }
 
         RoadTemplates roadTemplates = roadTemplatesForStyle(villageStyle);
-        RoadAnchorIndex roadAnchors = addRoadPieces(context, templateManager, pieces, center, layout.get().roads(), roadTemplates, random);
+        RoadAnchorIndex roadAnchors = addRoadPieces(terrain, templateManager, pieces, center, layout.get().roads(), roadTemplates, random);
 
-        int requiredBuildings = addRequiredBuildings(context, templateManager, pieces, occupied, center,
+        int requiredBuildings = addRequiredBuildings(terrain, templateManager, buildingInfoCache, pieces, occupied, center,
                 layout.get().roads(), roadAnchors, layout.get().lots(), random);
         if (requiredBuildings < requiredBuildingsForStyle(villageStyle).length) {
             return Optional.empty();
         }
 
-        int buildings = requiredBuildings + addBuildingPieces(context, templateManager, pieces, occupied, center,
+        int buildings = requiredBuildings + addBuildingPieces(terrain, templateManager, buildingInfoCache, pieces, occupied, center,
                 layout.get().roads(), roadAnchors, layout.get().lots(), Math.max(0, targetBuildings - requiredBuildings), random);
         if (buildings < Math.min(minBuildings, MIN_ACCEPTED_BUILDINGS)) {
             return Optional.empty();
         }
 
-        addVillagerPieces(context, templateManager, pieces, center, layout.get().lots(), targetBuildings, random);
+        addVillagerPieces(terrain, templateManager, pieces, center, layout.get().lots(), targetBuildings, random);
         return Optional.of(new VillagePlan(pieces));
     }
 
@@ -177,7 +185,7 @@ public class LargeVillageStructure extends Structure {
         return Math.min(maxBuildings, Math.max(minBuildings, target));
     }
 
-    private Optional<VillageLayout> generateVillageLayout(Context context, BlockPos center, int radius, int targetBuildings, Random random) {
+    private Optional<VillageLayout> generateVillageLayout(TerrainSampler terrain, BlockPos center, int radius, int targetBuildings, Random random) {
         Set<Point> nodes = new HashSet<>();
         Set<RoadSegment> segments = new HashSet<>();
         List<Lot> lots = new ArrayList<>();
@@ -191,7 +199,7 @@ public class LargeVillageStructure extends Structure {
             return Optional.empty();
         }
 
-        int coreSegments = addDistrictRing(context, center, radius, random, rings.get(0), true, targetLots, nodes, segments, lots);
+        int coreSegments = addDistrictRing(terrain, center, radius, random, rings.get(0), true, targetLots, nodes, segments, lots);
         if (coreSegments < 6) {
             return Optional.empty();
         }
@@ -199,8 +207,8 @@ public class LargeVillageStructure extends Structure {
         for (int i = 1; i < rings.size(); i++) {
             int previousRing = rings.get(i - 1);
             int ring = rings.get(i);
-            addRadialConnectors(context, center, radius, random, previousRing, ring, targetLots, nodes, segments, lots);
-            addDistrictRing(context, center, radius, random, ring, false, targetLots, nodes, segments, lots);
+            addRadialConnectors(terrain, center, radius, random, previousRing, ring, targetLots, nodes, segments, lots);
+            addDistrictRing(terrain, center, radius, random, ring, false, targetLots, nodes, segments, lots);
             if (lots.size() >= targetLots) {
                 break;
             }
@@ -235,7 +243,7 @@ public class LargeVillageStructure extends Structure {
     }
 
     private int addDistrictRing(
-            Context context,
+            TerrainSampler terrain,
             BlockPos center,
             int radius,
             Random random,
@@ -268,13 +276,13 @@ public class LargeVillageStructure extends Structure {
         ));
         shuffle(edges, random);
         for (RoadEdge edge : edges) {
-            added += addPlannedRoadWithLots(context, center, radius, random, edge.start(), edge.end(), core, targetLots, nodes, segments, lots);
+            added += addPlannedRoadWithLots(terrain, center, radius, random, edge.start(), edge.end(), core, targetLots, nodes, segments, lots);
         }
         return added;
     }
 
     private int addRadialConnectors(
-            Context context,
+            TerrainSampler terrain,
             BlockPos center,
             int radius,
             Random random,
@@ -286,19 +294,19 @@ public class LargeVillageStructure extends Structure {
             List<Lot> lots
     ) {
         int added = 0;
-        added += addPlannedRoadWithLots(context, center, radius, random, new Point(0, -innerRing), new Point(0, -outerRing),
+        added += addPlannedRoadWithLots(terrain, center, radius, random, new Point(0, -innerRing), new Point(0, -outerRing),
                 false, targetLots, nodes, segments, lots);
-        added += addPlannedRoadWithLots(context, center, radius, random, new Point(innerRing, 0), new Point(outerRing, 0),
+        added += addPlannedRoadWithLots(terrain, center, radius, random, new Point(innerRing, 0), new Point(outerRing, 0),
                 false, targetLots, nodes, segments, lots);
-        added += addPlannedRoadWithLots(context, center, radius, random, new Point(0, innerRing), new Point(0, outerRing),
+        added += addPlannedRoadWithLots(terrain, center, radius, random, new Point(0, innerRing), new Point(0, outerRing),
                 false, targetLots, nodes, segments, lots);
-        added += addPlannedRoadWithLots(context, center, radius, random, new Point(-innerRing, 0), new Point(-outerRing, 0),
+        added += addPlannedRoadWithLots(terrain, center, radius, random, new Point(-innerRing, 0), new Point(-outerRing, 0),
                 false, targetLots, nodes, segments, lots);
         return added;
     }
 
     private int addPlannedRoadWithLots(
-            Context context,
+            TerrainSampler terrain,
             BlockPos center,
             int radius,
             Random random,
@@ -310,7 +318,7 @@ public class LargeVillageStructure extends Structure {
             Set<RoadSegment> segments,
             List<Lot> lots
     ) {
-        if (!addPlannedRoadSegment(context, center, radius + DISTRICT_RING_SPACING, start, end, nodes, segments)) {
+        if (!addPlannedRoadSegment(terrain, center, radius + DISTRICT_RING_SPACING, start, end, nodes, segments)) {
             return 0;
         }
 
@@ -322,7 +330,7 @@ public class LargeVillageStructure extends Structure {
     }
 
     private boolean addPlannedRoadSegment(
-            Context context,
+            TerrainSampler terrain,
             BlockPos center,
             int radius,
             Point start,
@@ -332,7 +340,7 @@ public class LargeVillageStructure extends Structure {
     ) {
         RoadDirection direction = directionBetween(start, end);
         int length = Math.abs(end.x() - start.x()) + Math.abs(end.z() - start.z());
-        return length > 0 && tryAddRoadSegment(context, center, radius, start, direction, length, nodes, segments);
+        return length > 0 && tryAddRoadSegment(terrain, center, radius, start, direction, length, nodes, segments);
     }
 
     private void addLotsForPlannedSegment(
@@ -411,7 +419,7 @@ public class LargeVillageStructure extends Structure {
     }
 
     private boolean tryAddRoadSegment(
-            Context context,
+            TerrainSampler terrain,
             BlockPos center,
             int radius,
             Point start,
@@ -434,7 +442,7 @@ public class LargeVillageStructure extends Structure {
         }
 
         BlockBox footprint = segment.footprint(center);
-        if (!isFootprintSuitable(context, footprint, 7, 4)) {
+        if (!isFootprintSuitable(terrain, footprint, 7, 4)) {
             return false;
         }
 
@@ -445,7 +453,7 @@ public class LargeVillageStructure extends Structure {
     }
 
     private RoadAnchorIndex addRoadPieces(
-            Context context,
+            TerrainSampler terrain,
             StructureTemplateManager templateManager,
             List<PiecePlan> pieces,
             BlockPos center,
@@ -457,7 +465,7 @@ public class LargeVillageStructure extends Structure {
         for (RoadSegment segment : roads.segments()) {
             String template = segment.isHorizontal() ? templates.eastWest() : templates.northSouth();
             for (RoadTile tile : segment.tiles(center)) {
-                PiecePlan roadPiece = addPieceAt(templateManager, pieces, template, tile.templatePos(context), BlockRotation.NONE,
+                PiecePlan roadPiece = addPieceAt(templateManager, pieces, template, tile.templatePos(terrain), BlockRotation.NONE,
                         StructurePool.Projection.TERRAIN_MATCHING, false);
                 addRoadAnchorsForPiece(templateManager, anchors, segment, roadPiece);
             }
@@ -471,10 +479,10 @@ public class LargeVillageStructure extends Structure {
                 int z = center.getZ() + node.z();
                 BlockBox footprint = new BlockBox(x - ROAD_HALF_WIDTH, 0, z - ROAD_HALF_WIDTH,
                         x + ROAD_HALF_WIDTH, 0, z + ROAD_HALF_WIDTH);
-                if (!isFootprintSuitable(context, footprint, 7, 4)) {
+                if (!isFootprintSuitable(terrain, footprint, 7, 4)) {
                     continue;
                 }
-                BlockPos pos = new BlockPos(footprint.getMinX(), getAveragePlacementY(context, footprint, 6), footprint.getMinZ());
+                BlockPos pos = new BlockPos(footprint.getMinX(), getAveragePlacementY(terrain, footprint, 6), footprint.getMinZ());
                 addPieceAt(templateManager, pieces, templates.crossing(), pos, BlockRotation.NONE, StructurePool.Projection.TERRAIN_MATCHING, false);
             }
         }
@@ -501,8 +509,9 @@ public class LargeVillageStructure extends Structure {
     }
 
     private int addBuildingPieces(
-            Context context,
+            TerrainSampler terrain,
             StructureTemplateManager templateManager,
+            Map<BuildingInfoKey, BuildingPlacementInfo> buildingInfoCache,
             List<PiecePlan> pieces,
             List<BlockBox> occupied,
             BlockPos center,
@@ -530,7 +539,7 @@ public class LargeVillageStructure extends Structure {
                     ? farmBuildings[random.nextInt(farmBuildings.length)]
                     : buildings[random.nextInt(buildings.length)];
             BlockRotation rotation = chooseBuildingRotation(building, lot);
-            if (addRoadsideBuildingPiece(context, templateManager, pieces, occupied, center, roads, roadAnchors, building, lot,
+            if (addRoadsideBuildingPiece(terrain, templateManager, buildingInfoCache, pieces, occupied, center, roads, roadAnchors, building, lot,
                     rotation, StructurePool.Projection.RIGID, true, 4, 10, 3)) {
                 placed++;
                 if (useVanillaFarm) {
@@ -552,8 +561,9 @@ public class LargeVillageStructure extends Structure {
     }
 
     private int addRequiredBuildings(
-            Context context,
+            TerrainSampler terrain,
             StructureTemplateManager templateManager,
+            Map<BuildingInfoKey, BuildingPlacementInfo> buildingInfoCache,
             List<PiecePlan> pieces,
             List<BlockBox> occupied,
             BlockPos center,
@@ -566,7 +576,7 @@ public class LargeVillageStructure extends Structure {
         int placed = 0;
         for (RequiredBuilding building : requiredBuildingsForStyle(villageStyle)) {
             shuffle(candidates, random);
-            if (!addRequiredBuilding(context, templateManager, pieces, occupied, center, roads, roadAnchors, candidates, building)) {
+            if (!addRequiredBuilding(terrain, templateManager, buildingInfoCache, pieces, occupied, center, roads, roadAnchors, candidates, building)) {
                 return placed;
             }
             placed++;
@@ -575,8 +585,9 @@ public class LargeVillageStructure extends Structure {
     }
 
     private boolean addRequiredBuilding(
-            Context context,
+            TerrainSampler terrain,
             StructureTemplateManager templateManager,
+            Map<BuildingInfoKey, BuildingPlacementInfo> buildingInfoCache,
             List<PiecePlan> pieces,
             List<BlockBox> occupied,
             BlockPos center,
@@ -586,7 +597,7 @@ public class LargeVillageStructure extends Structure {
             RequiredBuilding building
     ) {
         for (Lot lot : lots) {
-            if (addRoadsideBuildingPiece(context, templateManager, pieces, occupied, center, roads, roadAnchors, building.templateId(), lot,
+            if (addRoadsideBuildingPiece(terrain, templateManager, buildingInfoCache, pieces, occupied, center, roads, roadAnchors, building.templateId(), lot,
                     chooseBuildingRotation(building.templateId(), lot), StructurePool.Projection.RIGID, building.legacy(), 4, 8, 5)) {
                 return true;
             }
@@ -595,7 +606,7 @@ public class LargeVillageStructure extends Structure {
     }
 
     private void addVillagerPieces(
-            Context context,
+            TerrainSampler terrain,
             StructureTemplateManager templateManager,
             List<PiecePlan> pieces,
             BlockPos center,
@@ -607,15 +618,15 @@ public class LargeVillageStructure extends Structure {
         shuffle(candidates, random);
         int count = Math.min(candidates.size(), Math.min(24, Math.max(10, targetBuildings / 5)));
         for (int i = 0; i < count; i++) {
-            BlockPos pos = getVillagerSpawnPos(context, center, candidates.get(i), random);
+            BlockPos pos = getVillagerSpawnPos(terrain, center, candidates.get(i), random);
             BlockBox footprint = new BlockBox(pos.getX(), 0, pos.getZ(), pos.getX(), 0, pos.getZ());
-            if (isFootprintSuitable(context, footprint, 2, 1)) {
+            if (isFootprintSuitable(terrain, footprint, 2, 1)) {
                 addPieceAt(templateManager, pieces, VILLAGER, pos, BlockRotation.NONE, StructurePool.Projection.RIGID, false);
             }
         }
     }
 
-    private BlockPos getVillagerSpawnPos(Context context, BlockPos center, Lot lot, Random random) {
+    private BlockPos getVillagerSpawnPos(TerrainSampler terrain, BlockPos center, Lot lot, Random random) {
         int roadX = center.getX() + lot.roadPoint().x();
         int roadZ = center.getZ() + lot.roadPoint().z();
         int offset = ROAD_HALF_WIDTH + 2;
@@ -629,7 +640,7 @@ public class LargeVillageStructure extends Structure {
             x = roadX + lot.side() * offset;
             z = roadZ + jitter;
         }
-        return new BlockPos(x, getPlacementY(context, x, z), z);
+        return new BlockPos(x, terrain.getPlacementY(x, z), z);
     }
 
     private void addLotIfValid(List<Lot> lots, BlockPos center, int radius, int x, int z, RoadDirection roadDirection, int side, Point roadPoint,
@@ -712,8 +723,9 @@ public class LargeVillageStructure extends Structure {
     }
 
     private boolean addRoadsideBuildingPiece(
-            Context context,
+            TerrainSampler terrain,
             StructureTemplateManager templateManager,
+            Map<BuildingInfoKey, BuildingPlacementInfo> buildingInfoCache,
             List<PiecePlan> pieces,
             List<BlockBox> occupied,
             BlockPos center,
@@ -728,11 +740,11 @@ public class LargeVillageStructure extends Structure {
             int terrainSampleStep,
             int padding
     ) {
-        BuildingPlacementInfo buildingInfo = getBuildingPlacementInfo(templateManager, templateId, projection, legacy, rotation);
+        BuildingPlacementInfo buildingInfo = getBuildingPlacementInfo(buildingInfoCache, templateManager, templateId, projection, legacy, rotation);
         StructurePoolElement element = buildingInfo.element();
         List<StructureTemplate.JigsawBlockInfo> entrances = findBuildingEntranceJigsaws(buildingInfo.entrances(), lot);
         for (StructureTemplate.JigsawBlockInfo entrance : entrances) {
-            if (addRoadsideBuildingPieceAtEntrance(context, templateManager, pieces, occupied, center, roads, roadAnchors, element, lot,
+            if (addRoadsideBuildingPieceAtEntrance(terrain, templateManager, pieces, occupied, center, roads, roadAnchors, element, lot,
                     entrance, rotation, terrainSpread, terrainSampleStep, padding)) {
                 return true;
             }
@@ -741,7 +753,7 @@ public class LargeVillageStructure extends Structure {
     }
 
     private boolean addRoadsideBuildingPieceAtEntrance(
-            Context context,
+            TerrainSampler terrain,
             StructureTemplateManager templateManager,
             List<PiecePlan> pieces,
             List<BlockBox> occupied,
@@ -757,7 +769,7 @@ public class LargeVillageStructure extends Structure {
             int padding
     ) {
         for (RoadAnchor roadAnchor : getRoadEntranceJigsawCandidates(lot, entrance, roadAnchors)) {
-            Optional<AttachedPiece> attachedPiece = attachBuildingToRoadJigsaw(context, templateManager, roadAnchor, element, rotation, entrance);
+            Optional<AttachedPiece> attachedPiece = attachBuildingToRoadJigsaw(terrain, templateManager, roadAnchor, element, rotation, entrance);
             if (attachedPiece.isEmpty()) {
                 continue;
             }
@@ -774,7 +786,7 @@ public class LargeVillageStructure extends Structure {
                 continue;
             }
 
-            if (!isFootprintSuitable(context, box, terrainSpread, terrainSampleStep)) {
+            if (!isFootprintSuitable(terrain, box, terrainSpread, terrainSampleStep)) {
                 continue;
             }
 
@@ -788,21 +800,25 @@ public class LargeVillageStructure extends Structure {
     }
 
     private BuildingPlacementInfo getBuildingPlacementInfo(
+            Map<BuildingInfoKey, BuildingPlacementInfo> cache,
             StructureTemplateManager templateManager,
             String templateId,
             StructurePool.Projection projection,
             boolean legacy,
             BlockRotation rotation
     ) {
-        StructurePoolElement element = createElement(templateId, projection, legacy);
-        List<StructureTemplate.JigsawBlockInfo> entrances = new ArrayList<>();
-        for (StructureTemplate.JigsawBlockInfo info : element.getStructureBlockInfos(templateManager, BlockPos.ORIGIN,
-                rotation, Random.create(0L))) {
-            if (BUILDING_ENTRANCE.equals(info.name())) {
-                entrances.add(info);
+        BuildingInfoKey key = new BuildingInfoKey(templateId, projection, legacy, rotation);
+        return cache.computeIfAbsent(key, ignored -> {
+            StructurePoolElement element = createElement(templateId, projection, legacy);
+            List<StructureTemplate.JigsawBlockInfo> entrances = new ArrayList<>();
+            for (StructureTemplate.JigsawBlockInfo info : element.getStructureBlockInfos(templateManager, BlockPos.ORIGIN,
+                    rotation, Random.create(0L))) {
+                if (BUILDING_ENTRANCE.equals(info.name())) {
+                    entrances.add(info);
+                }
             }
-        }
-        return new BuildingPlacementInfo(element, entrances);
+            return new BuildingPlacementInfo(element, entrances);
+        });
     }
 
     private static List<StructureTemplate.JigsawBlockInfo> findBuildingEntranceJigsaws(
@@ -820,7 +836,7 @@ public class LargeVillageStructure extends Structure {
     }
 
     private Optional<AttachedPiece> attachBuildingToRoadJigsaw(
-            Context context,
+            TerrainSampler terrain,
             StructureTemplateManager templateManager,
             RoadAnchor roadAnchor,
             StructurePoolElement element,
@@ -852,7 +868,7 @@ public class LargeVillageStructure extends Structure {
         if (parentRigid && childRigid) {
             targetMinY = parentBoxMinY + deltaY;
         } else {
-            targetMinY = getPlacementY(context, parentJigsawPos.getX(), parentJigsawPos.getZ()) - childJigsawY;
+            targetMinY = terrain.getPlacementY(parentJigsawPos.getX(), parentJigsawPos.getZ()) - childJigsawY;
         }
 
         int yOffset = targetMinY - unadjustedBox.getMinY();
@@ -873,7 +889,7 @@ public class LargeVillageStructure extends Structure {
         } else if (childRigid) {
             junctionGroundY = targetMinY + childJigsawY;
         } else {
-            junctionGroundY = getPlacementY(context, parentJigsawPos.getX(), parentJigsawPos.getZ()) + deltaY / 2;
+            junctionGroundY = terrain.getPlacementY(parentJigsawPos.getX(), parentJigsawPos.getZ()) + deltaY / 2;
         }
 
         JigsawJunction parentJunction = new JigsawJunction(connectionPos.getX(),
@@ -903,7 +919,7 @@ public class LargeVillageStructure extends Structure {
     }
 
     private boolean addCenteredPiece(
-            Context context,
+            TerrainSampler terrain,
             StructureTemplateManager templateManager,
             List<PiecePlan> pieces,
             List<BlockBox> occupied,
@@ -922,11 +938,11 @@ public class LargeVillageStructure extends Structure {
         int x = centerX - (originBox.getMinX() + originBox.getMaxX()) / 2;
         int z = centerZ - (originBox.getMinZ() + originBox.getMaxZ()) / 2;
         BlockBox horizontalBox = element.getBoundingBox(templateManager, new BlockPos(x, 0, z), rotation);
-        if (!isFootprintSuitable(context, horizontalBox, terrainSpread, terrainSampleStep)) {
+        if (!isFootprintSuitable(terrain, horizontalBox, terrainSpread, terrainSampleStep)) {
             return false;
         }
 
-        int y = getAveragePlacementY(context, horizontalBox, terrainSampleStep);
+        int y = getAveragePlacementY(terrain, horizontalBox, terrainSampleStep);
         BlockPos pos = new BlockPos(x, y, z);
         BlockBox box = element.getBoundingBox(templateManager, pos, rotation);
         BlockBox paddedBox = box.expand(padding, 0, padding);
@@ -965,18 +981,26 @@ public class LargeVillageStructure extends Structure {
         return new PiecePlan(templateManager, element, pos, element.getGroundLevelDelta(), rotation, box, new ArrayList<>());
     }
 
-    private boolean isAreaSuitable(Context context, int centerX, int centerZ, int radius, int maxHeightSpread, int sampleStep) {
+    private boolean isAreaSuitable(TerrainSampler terrain, int centerX, int centerZ, int radius, int maxHeightSpread, int sampleStep) {
         BlockBox box = new BlockBox(centerX - radius, 0, centerZ - radius, centerX + radius, 0, centerZ + radius);
-        return isFootprintSuitable(context, box, maxHeightSpread, sampleStep);
+        return isFootprintSuitable(terrain, box, maxHeightSpread, sampleStep);
     }
 
-    private boolean isLocateAreaSuitable(Context context, int centerX, int centerZ) {
-        int centerY = getPlacementY(context, centerX, centerZ);
+    private boolean isCenterBiomeValid(Context context, int x, int z) {
+        return context.biomePredicate().test(context.chunkGenerator().getBiomeSource().getBiome(
+                BiomeCoords.fromBlock(x),
+                BiomeCoords.fromBlock(context.chunkGenerator().getSeaLevel()),
+                BiomeCoords.fromBlock(z),
+                context.noiseConfig().getMultiNoiseSampler()
+        ));
+    }
+
+    private boolean isLocateAreaSuitable(TerrainSampler terrain, int centerX, int centerZ, int centerY) {
         int minY = centerY;
         int maxY = centerY;
 
         for (RoadDirection direction : RoadDirection.values()) {
-            int y = getPlacementY(context, centerX + direction.dx * LOCATE_TERRAIN_RADIUS, centerZ + direction.dz * LOCATE_TERRAIN_RADIUS);
+            int y = terrain.getPlacementY(centerX + direction.dx * LOCATE_TERRAIN_RADIUS, centerZ + direction.dz * LOCATE_TERRAIN_RADIUS);
             minY = Math.min(minY, y);
             maxY = Math.max(maxY, y);
         }
@@ -984,12 +1008,12 @@ public class LargeVillageStructure extends Structure {
         return maxY - minY <= 12;
     }
 
-    private boolean isFootprintSuitable(Context context, BlockBox box, int maxHeightSpread, int sampleStep) {
-        TerrainStats stats = sampleTerrain(context, box, sampleStep);
+    private boolean isFootprintSuitable(TerrainSampler terrain, BlockBox box, int maxHeightSpread, int sampleStep) {
+        TerrainStats stats = sampleTerrain(terrain, box, sampleStep);
         return !stats.hasFluid() && stats.heightSpread() <= maxHeightSpread;
     }
 
-    private TerrainStats sampleTerrain(Context context, BlockBox box, int sampleStep) {
+    private TerrainStats sampleTerrain(TerrainSampler terrain, BlockBox box, int sampleStep) {
         int minY = Integer.MAX_VALUE;
         int maxY = Integer.MIN_VALUE;
         int totalY = 0;
@@ -998,10 +1022,8 @@ public class LargeVillageStructure extends Structure {
 
         for (int x : sampleAxis(box.getMinX(), box.getMaxX(), sampleStep)) {
             for (int z : sampleAxis(box.getMinZ(), box.getMaxZ(), sampleStep)) {
-                int y = getPlacementY(context, x, z);
-                int surfaceY = context.chunkGenerator().getHeightInGround(x, z, Heightmap.Type.WORLD_SURFACE_WG, context.world(), context.noiseConfig());
-                VerticalBlockSample sample = context.chunkGenerator().getColumnSample(x, z, context.world(), context.noiseConfig());
-                if (hasFluidNearSurface(sample, surfaceY)) {
+                int y = terrain.getPlacementY(x, z);
+                if (terrain.hasFluidNearSurface(x, z, y)) {
                     hasFluid = true;
                 }
 
@@ -1025,8 +1047,8 @@ public class LargeVillageStructure extends Structure {
         return false;
     }
 
-    private int getAveragePlacementY(Context context, BlockBox box, int sampleStep) {
-        return sampleTerrain(context, box, sampleStep).averageY();
+    private int getAveragePlacementY(TerrainSampler terrain, BlockBox box, int sampleStep) {
+        return sampleTerrain(terrain, box, sampleStep).averageY();
     }
 
     private static List<Integer> sampleAxis(int min, int max, int step) {
@@ -1446,10 +1468,6 @@ public class LargeVillageStructure extends Structure {
         };
     }
 
-    private int getPlacementY(Context context, int x, int z) {
-        return context.chunkGenerator().getHeightOnGround(x, z, Heightmap.Type.WORLD_SURFACE_WG, context.world(), context.noiseConfig());
-    }
-
     private static int divideRoundUp(int value, int divisor) {
         return (value + divisor - 1) / divisor;
     }
@@ -1509,6 +1527,9 @@ public class LargeVillageStructure extends Structure {
     private record BuildingPlacementInfo(StructurePoolElement element, List<StructureTemplate.JigsawBlockInfo> entrances) {
     }
 
+    private record BuildingInfoKey(String templateId, StructurePool.Projection projection, boolean legacy, BlockRotation rotation) {
+    }
+
     private record AttachedPiece(PiecePlan piece, JigsawJunction parentJunction, JigsawJunction childJunction) {
     }
 
@@ -1518,6 +1539,32 @@ public class LargeVillageStructure extends Structure {
     private record TerrainStats(int minY, int maxY, int averageY, boolean hasFluid) {
         private int heightSpread() {
             return maxY - minY;
+        }
+    }
+
+    private static class TerrainSampler {
+        private final Context context;
+        private final Map<Long, Integer> placementYCache = new HashMap<>();
+        private final Map<Long, Boolean> fluidNearSurfaceCache = new HashMap<>();
+
+        private TerrainSampler(Context context) {
+            this.context = context;
+        }
+
+        private int getPlacementY(int x, int z) {
+            return placementYCache.computeIfAbsent(xzKey(x, z), ignored -> context.chunkGenerator()
+                    .getHeightOnGround(x, z, Heightmap.Type.WORLD_SURFACE_WG, context.world(), context.noiseConfig()));
+        }
+
+        private boolean hasFluidNearSurface(int x, int z, int placementY) {
+            return fluidNearSurfaceCache.computeIfAbsent(xzKey(x, z), ignored -> {
+                VerticalBlockSample sample = context.chunkGenerator().getColumnSample(x, z, context.world(), context.noiseConfig());
+                return LargeVillageStructure.hasFluidNearSurface(sample, placementY - 1);
+            });
+        }
+
+        private static long xzKey(int x, int z) {
+            return ((long) x << 32) ^ (z & 0xffffffffL);
         }
     }
 
@@ -1662,10 +1709,8 @@ public class LargeVillageStructure extends Structure {
     }
 
     private record RoadTile(BlockBox footprint) {
-        private BlockPos templatePos(Context context) {
-            int y = context.chunkGenerator()
-                    .getHeightOnGround(footprint.getCenter().getX(), footprint.getCenter().getZ(), Heightmap.Type.WORLD_SURFACE_WG,
-                            context.world(), context.noiseConfig());
+        private BlockPos templatePos(TerrainSampler terrain) {
+            int y = terrain.getPlacementY(footprint.getCenter().getX(), footprint.getCenter().getZ());
             return new BlockPos(footprint.getMinX(), y, footprint.getMinZ());
         }
     }
