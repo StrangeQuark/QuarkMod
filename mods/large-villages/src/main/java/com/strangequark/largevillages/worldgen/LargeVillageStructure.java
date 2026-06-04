@@ -457,7 +457,7 @@ public class LargeVillageStructure extends Structure {
         for (RoadSegment segment : roads.segments()) {
             String template = segment.isHorizontal() ? templates.eastWest() : templates.northSouth();
             for (RoadTile tile : segment.tiles(center)) {
-                PiecePlan roadPiece = addPieceAt(context, templateManager, pieces, template, tile.templatePos(context), BlockRotation.NONE,
+                PiecePlan roadPiece = addPieceAt(templateManager, pieces, template, tile.templatePos(context), BlockRotation.NONE,
                         StructurePool.Projection.TERRAIN_MATCHING, false);
                 addRoadAnchorsForPiece(templateManager, anchors, segment, roadPiece);
             }
@@ -475,7 +475,7 @@ public class LargeVillageStructure extends Structure {
                     continue;
                 }
                 BlockPos pos = new BlockPos(footprint.getMinX(), getAveragePlacementY(context, footprint, 6), footprint.getMinZ());
-                addPieceAt(context, templateManager, pieces, templates.crossing(), pos, BlockRotation.NONE, StructurePool.Projection.TERRAIN_MATCHING, false);
+                addPieceAt(templateManager, pieces, templates.crossing(), pos, BlockRotation.NONE, StructurePool.Projection.TERRAIN_MATCHING, false);
             }
         }
 
@@ -492,7 +492,7 @@ public class LargeVillageStructure extends Structure {
                 piece.rotation(), Random.create(0L))) {
             if (BUILDING_ENTRANCE.equals(info.name())) {
                 Direction facing = JigsawBlock.getFacing(info.info().state());
-                RoadAnchor anchor = new RoadAnchor(piece, info, facing, segment);
+                RoadAnchor anchor = new RoadAnchor(piece, info, segment);
                 anchors.computeIfAbsent(segment, ignored -> new EnumMap<>(Direction.class))
                         .computeIfAbsent(facing, ignored -> new ArrayList<>())
                         .add(anchor);
@@ -610,7 +610,7 @@ public class LargeVillageStructure extends Structure {
             BlockPos pos = getVillagerSpawnPos(context, center, candidates.get(i), random);
             BlockBox footprint = new BlockBox(pos.getX(), 0, pos.getZ(), pos.getX(), 0, pos.getZ());
             if (isFootprintSuitable(context, footprint, 2, 1)) {
-                addPieceAt(context, templateManager, pieces, VILLAGER, pos, BlockRotation.NONE, StructurePool.Projection.RIGID, false);
+                addPieceAt(templateManager, pieces, VILLAGER, pos, BlockRotation.NONE, StructurePool.Projection.RIGID, false);
             }
         }
     }
@@ -731,20 +731,9 @@ public class LargeVillageStructure extends Structure {
         BuildingPlacementInfo buildingInfo = getBuildingPlacementInfo(templateManager, templateId, projection, legacy, rotation);
         StructurePoolElement element = buildingInfo.element();
         List<StructureTemplate.JigsawBlockInfo> entrances = findBuildingEntranceJigsaws(buildingInfo.entrances(), lot);
-        if (!buildingInfo.entrances().isEmpty()) {
-            for (StructureTemplate.JigsawBlockInfo entrance : entrances) {
-                if (addRoadsideBuildingPieceAtEntrance(context, templateManager, pieces, occupied, center, roads, roadAnchors, element, lot,
-                        entrance, rotation, terrainSpread, terrainSampleStep, padding)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        int[] roadGaps = new int[]{1, 2, 3, 4};
-        for (int roadGap : roadGaps) {
-            if (addRoadsideBuildingPieceAt(context, templateManager, pieces, occupied, center, roads, element, buildingInfo.originBox(), lot,
-                    roadGap, rotation, terrainSpread, terrainSampleStep, padding)) {
+        for (StructureTemplate.JigsawBlockInfo entrance : entrances) {
+            if (addRoadsideBuildingPieceAtEntrance(context, templateManager, pieces, occupied, center, roads, roadAnchors, element, lot,
+                    entrance, rotation, terrainSpread, terrainSampleStep, padding)) {
                 return true;
             }
         }
@@ -798,48 +787,6 @@ public class LargeVillageStructure extends Structure {
         return false;
     }
 
-    private boolean addRoadsideBuildingPieceAt(
-            Context context,
-            StructureTemplateManager templateManager,
-            List<PiecePlan> pieces,
-            List<BlockBox> occupied,
-            BlockPos center,
-            RoadNetwork roads,
-            StructurePoolElement element,
-            BlockBox originBox,
-            Lot lot,
-            int roadGap,
-            BlockRotation rotation,
-            int terrainSpread,
-            int terrainSampleStep,
-            int padding
-    ) {
-        BlockPos posXZ = getRoadAnchoredBuildingPos(center, lot, originBox, roadGap);
-        int x = posXZ.getX();
-        int z = posXZ.getZ();
-        BlockBox horizontalBox = element.getBoundingBox(templateManager, new BlockPos(x, 0, z), rotation);
-        if (!isFootprintSuitable(context, horizontalBox, terrainSpread, terrainSampleStep)) {
-            return false;
-        }
-
-        int y = getAveragePlacementY(context, horizontalBox, terrainSampleStep);
-        BlockPos pos = new BlockPos(x, y, z);
-        BlockBox box = element.getBoundingBox(templateManager, pos, rotation);
-        BlockBox paddedBox = box.expand(padding, 0, padding);
-        if (intersectsAnyXZ(paddedBox, occupied)) {
-            return false;
-        }
-
-        int distanceFromRoad = distanceFromRoads(box, center, roads);
-        if (distanceFromRoad <= 0 || distanceFromRoad > MAX_BUILDING_DISTANCE_FROM_ROAD) {
-            return false;
-        }
-
-        pieces.add(createPiecePlan(templateManager, element, pos, rotation, box));
-        occupied.add(paddedBox);
-        return true;
-    }
-
     private BuildingPlacementInfo getBuildingPlacementInfo(
             StructureTemplateManager templateManager,
             String templateId,
@@ -848,7 +795,6 @@ public class LargeVillageStructure extends Structure {
             BlockRotation rotation
     ) {
         StructurePoolElement element = createElement(templateId, projection, legacy);
-        BlockBox originBox = element.getBoundingBox(templateManager, BlockPos.ORIGIN, rotation);
         List<StructureTemplate.JigsawBlockInfo> entrances = new ArrayList<>();
         for (StructureTemplate.JigsawBlockInfo info : element.getStructureBlockInfos(templateManager, BlockPos.ORIGIN,
                 rotation, Random.create(0L))) {
@@ -856,7 +802,7 @@ public class LargeVillageStructure extends Structure {
                 entrances.add(info);
             }
         }
-        return new BuildingPlacementInfo(element, originBox, entrances);
+        return new BuildingPlacementInfo(element, entrances);
     }
 
     private static List<StructureTemplate.JigsawBlockInfo> findBuildingEntranceJigsaws(
@@ -956,25 +902,6 @@ public class LargeVillageStructure extends Structure {
         return dx * dx + dz * dz;
     }
 
-    private static BlockPos getRoadAnchoredBuildingPos(BlockPos center, Lot lot, BlockBox originBox, int roadGap) {
-        int roadX = center.getX() + lot.roadPoint().x();
-        int roadZ = center.getZ() + lot.roadPoint().z();
-
-        if (lot.roadDirection().isHorizontal()) {
-            int x = lot.x() - (originBox.getMinX() + originBox.getMaxX()) / 2;
-            int z = lot.side() > 0
-                    ? roadZ + ROAD_HALF_WIDTH + roadGap - originBox.getMinZ()
-                    : roadZ - ROAD_HALF_WIDTH - roadGap - originBox.getMaxZ();
-            return new BlockPos(x, 0, z);
-        }
-
-        int x = lot.side() > 0
-                ? roadX + ROAD_HALF_WIDTH + roadGap - originBox.getMinX()
-                : roadX - ROAD_HALF_WIDTH - roadGap - originBox.getMaxX();
-        int z = lot.z() - (originBox.getMinZ() + originBox.getMaxZ()) / 2;
-        return new BlockPos(x, 0, z);
-    }
-
     private boolean addCenteredPiece(
             Context context,
             StructureTemplateManager templateManager,
@@ -1013,7 +940,6 @@ public class LargeVillageStructure extends Structure {
     }
 
     private PiecePlan addPieceAt(
-            Context context,
             StructureTemplateManager templateManager,
             List<PiecePlan> pieces,
             String templateId,
@@ -1061,21 +987,6 @@ public class LargeVillageStructure extends Structure {
     private boolean isFootprintSuitable(Context context, BlockBox box, int maxHeightSpread, int sampleStep) {
         TerrainStats stats = sampleTerrain(context, box, sampleStep);
         return !stats.hasFluid() && stats.heightSpread() <= maxHeightSpread;
-    }
-
-    private boolean isFootprintHeightSuitable(Context context, BlockBox box, int maxHeightSpread, int sampleStep) {
-        int minY = Integer.MAX_VALUE;
-        int maxY = Integer.MIN_VALUE;
-
-        for (int x : sampleAxis(box.getMinX(), box.getMaxX(), sampleStep)) {
-            for (int z : sampleAxis(box.getMinZ(), box.getMaxZ(), sampleStep)) {
-                int y = getPlacementY(context, x, z);
-                minY = Math.min(minY, y);
-                maxY = Math.max(maxY, y);
-            }
-        }
-
-        return maxY - minY <= maxHeightSpread;
     }
 
     private TerrainStats sampleTerrain(Context context, BlockBox box, int sampleStep) {
@@ -1589,13 +1500,13 @@ public class LargeVillageStructure extends Structure {
         }
     }
 
-    private record RoadAnchor(PiecePlan piece, StructureTemplate.JigsawBlockInfo jigsaw, Direction facing, RoadSegment segment) {
+    private record RoadAnchor(PiecePlan piece, StructureTemplate.JigsawBlockInfo jigsaw, RoadSegment segment) {
         private BlockPos pos() {
             return jigsaw.info().pos();
         }
     }
 
-    private record BuildingPlacementInfo(StructurePoolElement element, BlockBox originBox, List<StructureTemplate.JigsawBlockInfo> entrances) {
+    private record BuildingPlacementInfo(StructurePoolElement element, List<StructureTemplate.JigsawBlockInfo> entrances) {
     }
 
     private record AttachedPiece(PiecePlan piece, JigsawJunction parentJunction, JigsawJunction childJunction) {
