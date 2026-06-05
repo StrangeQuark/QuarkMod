@@ -17,6 +17,7 @@ import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.network.packet.s2c.play.PositionFlag;
+import net.minecraft.particle.ParticleTypes;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.MinecraftServer;
@@ -44,6 +45,7 @@ public final class DreamDimensionEvents {
     private static final int DREAM_LANDING_Y = 96;
     private static final int DREAM_LANDING_Z = 0;
     private static final int LANDING_ISLAND_RADIUS = 7;
+    private static final long DREAM_SOUND_INTERVAL = 170L;
     private static final EntityAttributeModifier DREAM_GRAVITY_MODIFIER = new EntityAttributeModifier(
             DreamDimensionMod.id("dream_half_gravity"),
             -0.5D,
@@ -124,6 +126,8 @@ public final class DreamDimensionEvents {
         ServerPlayerEntity teleported = teleport(player, dreamWorld, landingFeet.toBottomCenterPos(), player.getYaw(), player.getPitch());
         ModAttachments.setDreamState(teleported, ModAttachments.getDreamState(teleported).withReturnLocation(returnLocation));
         applyDreamGravity(teleported);
+        spawnDreamBurst(dreamWorld, teleported.getPos().add(0.0D, 1.0D, 0.0D));
+        teleported.playSoundToPlayer(SoundEvents.BLOCK_AMETHYST_BLOCK_RESONATE, SoundCategory.AMBIENT, 0.6F, 0.55F);
         teleported.sendMessage(Text.translatable("message.quarkmod.entered_dream"), true);
     }
 
@@ -135,6 +139,7 @@ public final class DreamDimensionEvents {
         ServerPlayerEntity teleported = teleport(player, target.world(), target.position(), target.yaw(), target.pitch());
         removeDreamGravity(teleported);
         ModAttachments.clearDreamState(teleported);
+        teleported.playSoundToPlayer(SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.AMBIENT, 0.55F, 1.35F);
         teleported.sendMessage(Text.translatable("message.quarkmod.left_dream"), true);
     }
 
@@ -249,15 +254,33 @@ public final class DreamDimensionEvents {
     }
 
     private static void tickDreamAmbience(ServerWorld world) {
-        if (!isDreamWorld(world) || world.getTime() % 220L != 0L) {
+        if (!isDreamWorld(world)) {
             return;
         }
 
+        long time = world.getTime();
         for (ServerPlayerEntity player : world.getPlayers()) {
-            if (world.getRandom().nextFloat() < 0.55F) {
-                player.playSoundToPlayer(SoundEvents.AMBIENT_CAVE.value(), SoundCategory.AMBIENT, 0.28F, 0.65F + world.getRandom().nextFloat() * 0.25F);
+            if ((time + player.getId() * 17L) % DREAM_SOUND_INTERVAL == 0L) {
+                playDreamAmbience(world, player);
             }
         }
+    }
+
+    private static void playDreamAmbience(ServerWorld world, ServerPlayerEntity player) {
+        float pitch = 0.55F + world.getRandom().nextFloat() * 0.75F;
+        switch (world.getRandom().nextInt(5)) {
+            case 0 -> player.playSoundToPlayer(SoundEvents.AMBIENT_CAVE.value(), SoundCategory.AMBIENT, 0.22F, pitch);
+            case 1 -> player.playSoundToPlayer(SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.AMBIENT, 0.18F, 0.65F + pitch);
+            case 2 -> player.playSoundToPlayer(SoundEvents.ENTITY_ALLAY_AMBIENT_WITH_ITEM, SoundCategory.AMBIENT, 0.12F, 0.45F + pitch);
+            case 3 -> player.playSoundToPlayer(SoundEvents.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.AMBIENT, 0.12F, 0.7F + pitch);
+            default -> player.playSoundToPlayer(SoundEvents.BLOCK_FIREFLY_BUSH_IDLE, SoundCategory.AMBIENT, 0.16F, 0.8F + pitch);
+        }
+    }
+
+    private static void spawnDreamBurst(ServerWorld world, Vec3d pos) {
+        world.spawnParticles(ParticleTypes.REVERSE_PORTAL, pos.x, pos.y, pos.z, 80, 1.4D, 1.1D, 1.4D, 0.06D);
+        world.spawnParticles(ParticleTypes.END_ROD, pos.x, pos.y, pos.z, 36, 1.0D, 0.7D, 1.0D, 0.02D);
+        world.spawnParticles(ParticleTypes.ENCHANT, pos.x, pos.y, pos.z, 48, 1.2D, 0.8D, 1.2D, 0.04D);
     }
 
     private static void applyDreamGravity(ServerPlayerEntity player) {

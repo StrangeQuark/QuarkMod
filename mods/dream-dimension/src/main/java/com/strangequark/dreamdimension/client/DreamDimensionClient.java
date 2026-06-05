@@ -13,8 +13,8 @@ public class DreamDimensionClient implements ClientModInitializer {
     }
 
     private static class DreamEffects extends DimensionEffects {
-        private static final int SKY_COLOR = 0xA8A4C8;
-        private static final Vec3d FOG_COLOR = new Vec3d(0.58D, 0.60D, 0.72D);
+        private static final int SKY_COLOR = 0x686884;
+        private static final Vec3d FOG_COLOR = new Vec3d(0.50D, 0.47D, 0.62D);
 
         private DreamEffects() {
             super(SkyType.NORMAL, false, false);

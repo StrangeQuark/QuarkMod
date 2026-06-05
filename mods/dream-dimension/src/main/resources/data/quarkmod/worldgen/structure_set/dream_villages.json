@@ -1,0 +1,15 @@
+{
+  "placement": {
+    "type": "minecraft:random_spread",
+    "salt": 73492815,
+    "separation": 14,
+    "spacing": 40,
+    "spread_type": "triangular"
+  },
+  "structures": [
+    {
+      "structure": "quarkmod:dream_village",
+      "weight": 1
+    }
+  ]
+}
