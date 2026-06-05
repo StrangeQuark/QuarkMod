@@ -3,7 +3,8 @@
 	"package": "com.strangequark.largevillages.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
-		"ChunkGeneratorMixin"
+		"ChunkGeneratorMixin",
+		"VillagerEntityMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
