@@ -2,6 +2,7 @@ package com.strangequark.dreamdimension;
 
 import com.strangequark.dreamdimension.item.ModItems;
 import com.strangequark.dreamdimension.state.ModAttachments;
+import com.strangequark.dreamdimension.village.DreamVillagers;
 import com.strangequark.dreamdimension.world.DreamDimensionEvents;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.util.Identifier;
@@ -21,6 +22,7 @@ public class DreamDimensionMod implements ModInitializer {
     public void onInitialize() {
         ModAttachments.registerAttachments();
         ModItems.registerModItems();
+        DreamVillagers.register();
         DreamDimensionEvents.registerEvents();
 
         LOGGER.info("QuarkMod Dream Dimension init success");

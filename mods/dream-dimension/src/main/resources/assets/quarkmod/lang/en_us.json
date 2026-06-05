@@ -1,4 +1,11 @@
 {
+  "entity.minecraft.villager.quarkmod.drift_gardener": "Drift Gardener",
+  "entity.minecraft.villager.quarkmod.echo_seer": "Echo Seer",
+  "entity.minecraft.villager.quarkmod.lucid_cartographer": "Lucid Cartographer",
+  "entity.minecraft.villager.quarkmod.memory_weaver": "Memory Weaver",
+  "entity.minecraft.villager.quarkmod.mender_of_waking": "Mender of Waking",
+  "entity.minecraft.villager.quarkmod.somnologist": "Somnologist",
+  "entity.minecraft.villager.quarkmod.stargazer": "Stargazer",
   "item.quarkmod.dream_potion": "Dream Potion",
   "message.quarkmod.dream_dimension_missing": "The Dream Dimension is not loaded.",
   "message.quarkmod.dream_potion_ready": "Sleep in a bed to enter the Dream Dimension.",
