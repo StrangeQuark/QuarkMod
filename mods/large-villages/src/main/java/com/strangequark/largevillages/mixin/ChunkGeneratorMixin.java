@@ -24,7 +24,7 @@ public abstract class ChunkGeneratorMixin {
             boolean skipReferencedStructures,
             CallbackInfoReturnable<Pair<BlockPos, RegistryEntry<Structure>>> cir
     ) {
-        if (skipReferencedStructures || !LargeVillageLocator.canHandle(structures)) {
+        if (!LargeVillageLocator.canHandle(structures)) {
             return;
         }
 
