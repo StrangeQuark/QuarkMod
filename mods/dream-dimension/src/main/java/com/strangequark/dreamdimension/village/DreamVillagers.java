@@ -28,6 +28,7 @@ import net.minecraft.sound.SoundEvent;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.text.Text;
 import net.minecraft.util.Util;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.village.TradeOffer;
 import net.minecraft.village.TradeOffers;
@@ -54,7 +55,6 @@ public final class DreamVillagers {
     private static final int DREAM_VILLAGER_LEVEL = 2;
     private static final double TARGET_CLEAR_RADIUS = 128.0D;
     private static final float PRICE_MULTIPLIER = 0.05F;
-    private static final Predicate<RegistryEntry<PointOfInterestType>> NO_WORKSTATION = poi -> false;
     private static final List<RegistryKey<VillagerProfession>> DREAM_PROFESSIONS = List.of(
             SOMNOLOGIST,
             LUCID_CARTOGRAPHER,
@@ -70,29 +70,35 @@ public final class DreamVillagers {
     }
 
     public static void register() {
+        DreamVillageWorkstations.register();
         registerProfessions();
         registerTrades();
         registerEvents();
     }
 
     private static void registerProfessions() {
-        registerProfession(SOMNOLOGIST, SoundEvents.ENTITY_VILLAGER_WORK_CLERIC);
-        registerProfession(LUCID_CARTOGRAPHER, SoundEvents.ENTITY_VILLAGER_WORK_CARTOGRAPHER);
-        registerProfession(ECHO_SEER, SoundEvents.ENTITY_VILLAGER_WORK_LIBRARIAN);
-        registerProfession(STARGAZER, SoundEvents.ENTITY_VILLAGER_WORK_LIBRARIAN);
-        registerProfession(MEMORY_WEAVER, SoundEvents.ENTITY_VILLAGER_WORK_SHEPHERD);
-        registerProfession(MENDER_OF_WAKING, SoundEvents.ENTITY_VILLAGER_WORK_TOOLSMITH);
-        registerProfession(DRIFT_GARDENER, SoundEvents.ENTITY_VILLAGER_WORK_FARMER);
+        registerProfession(SOMNOLOGIST, DreamVillageWorkstations.SOMNARIUM_POI, SoundEvents.ENTITY_VILLAGER_WORK_CLERIC);
+        registerProfession(LUCID_CARTOGRAPHER, DreamVillageWorkstations.LUCID_CHARTING_TABLE_POI, SoundEvents.ENTITY_VILLAGER_WORK_CARTOGRAPHER);
+        registerProfession(ECHO_SEER, DreamVillageWorkstations.ECHO_LECTERN_POI, SoundEvents.ENTITY_VILLAGER_WORK_LIBRARIAN);
+        registerProfession(STARGAZER, DreamVillageWorkstations.STARGAZER_TABLE_POI, SoundEvents.ENTITY_VILLAGER_WORK_LIBRARIAN);
+        registerProfession(MEMORY_WEAVER, DreamVillageWorkstations.MEMORY_LOOM_POI, SoundEvents.ENTITY_VILLAGER_WORK_SHEPHERD);
+        registerProfession(MENDER_OF_WAKING, DreamVillageWorkstations.WAKING_ANVIL_POI, SoundEvents.ENTITY_VILLAGER_WORK_TOOLSMITH);
+        registerProfession(DRIFT_GARDENER, DreamVillageWorkstations.DRIFT_COMPOSTER_POI, SoundEvents.ENTITY_VILLAGER_WORK_FARMER);
     }
 
-    private static void registerProfession(RegistryKey<VillagerProfession> key, SoundEvent workSound) {
+    private static void registerProfession(
+            RegistryKey<VillagerProfession> key,
+            RegistryKey<PointOfInterestType> workstationKey,
+            SoundEvent workSound
+    ) {
+        Predicate<RegistryEntry<PointOfInterestType>> workstation = poi -> poi.matchesKey(workstationKey);
         Registry.register(
                 Registries.VILLAGER_PROFESSION,
                 key.getValue(),
                 new VillagerProfession(
                         Text.translatable(Util.createTranslationKey("entity.minecraft.villager", key.getValue())),
-                        NO_WORKSTATION,
-                        NO_WORKSTATION,
+                        workstation,
+                        workstation,
                         ImmutableSet.of(),
                         ImmutableSet.of(),
                         workSound
@@ -205,7 +211,8 @@ public final class DreamVillagers {
 
     private static void makeDreamVillager(VillagerEntity villager, ServerWorld world) {
         if (!isDreamProfession(villager)) {
-            RegistryKey<VillagerProfession> profession = DREAM_PROFESSIONS.get(Math.floorMod(villager.getUuid().hashCode(), DREAM_PROFESSIONS.size()));
+            RegistryKey<VillagerProfession> profession = findNearbyWorkstationProfession(villager)
+                    .orElseGet(() -> deterministicProfession(villager));
             villager.setVillagerData(villager.getVillagerData().withProfession(professionEntry(profession)));
         }
 
@@ -217,6 +224,23 @@ public final class DreamVillagers {
         villager.setExperience(Math.max(villager.getExperience(), VillagerData.getLowerLevelExperience(DREAM_VILLAGER_LEVEL)));
         villager.setPersistent();
         villager.reinitializeBrain(world);
+    }
+
+    private static Optional<RegistryKey<VillagerProfession>> findNearbyWorkstationProfession(VillagerEntity villager) {
+        BlockPos origin = villager.getBlockPos();
+        for (BlockPos pos : BlockPos.iterateOutwards(origin, 10, 4, 10)) {
+            Optional<RegistryKey<VillagerProfession>> profession = DreamVillageWorkstations.professionFor(
+                    villager.getWorld().getBlockState(pos).getBlock()
+            );
+            if (profession.isPresent()) {
+                return profession;
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static RegistryKey<VillagerProfession> deterministicProfession(VillagerEntity villager) {
+        return DREAM_PROFESSIONS.get(Math.floorMod(villager.getUuid().hashCode(), DREAM_PROFESSIONS.size()));
     }
 
     private static RegistryEntry<VillagerProfession> professionEntry(RegistryKey<VillagerProfession> profession) {

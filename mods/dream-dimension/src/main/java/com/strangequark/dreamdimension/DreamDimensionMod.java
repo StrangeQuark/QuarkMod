@@ -1,9 +1,11 @@
 package com.strangequark.dreamdimension;
 
 import com.strangequark.dreamdimension.item.ModItems;
+import com.strangequark.dreamdimension.block.ModBlocks;
 import com.strangequark.dreamdimension.state.ModAttachments;
 import com.strangequark.dreamdimension.village.DreamVillagers;
 import com.strangequark.dreamdimension.world.DreamDimensionEvents;
+import com.strangequark.dreamdimension.world.structure.ModStructureTypes;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
@@ -21,6 +23,8 @@ public class DreamDimensionMod implements ModInitializer {
     @Override
     public void onInitialize() {
         ModAttachments.registerAttachments();
+        ModStructureTypes.registerStructureTypes();
+        ModBlocks.registerModBlocks();
         ModItems.registerModItems();
         DreamVillagers.register();
         DreamDimensionEvents.registerEvents();

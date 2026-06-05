@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "quarkmod:block/lucid_charting_table"
+    }
+  }
+}

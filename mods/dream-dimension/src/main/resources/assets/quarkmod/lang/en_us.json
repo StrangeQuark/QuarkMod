@@ -1,4 +1,11 @@
 {
+  "block.quarkmod.drift_composter": "Drift Composter",
+  "block.quarkmod.echo_lectern": "Echo Lectern",
+  "block.quarkmod.lucid_charting_table": "Lucid Charting Table",
+  "block.quarkmod.memory_loom": "Memory Loom",
+  "block.quarkmod.somnarium": "Somnarium",
+  "block.quarkmod.stargazer_table": "Stargazer Table",
+  "block.quarkmod.waking_anvil": "Waking Anvil",
   "entity.minecraft.villager.quarkmod.drift_gardener": "Drift Gardener",
   "entity.minecraft.villager.quarkmod.echo_seer": "Echo Seer",
   "entity.minecraft.villager.quarkmod.lucid_cartographer": "Lucid Cartographer",
