@@ -1,0 +1,20 @@
+{
+  "values": [
+    "quarkmod:dream/plains",
+    "quarkmod:dream/sunflower_plains",
+    "quarkmod:dream/snowy_plains",
+    "quarkmod:dream/taiga",
+    "quarkmod:dream/snowy_taiga",
+    "quarkmod:dream/old_growth_pine_taiga",
+    "quarkmod:dream/old_growth_spruce_taiga",
+    "quarkmod:dream/savanna",
+    "quarkmod:dream/savanna_plateau",
+    "quarkmod:dream/desert",
+    "quarkmod:dream/forest",
+    "quarkmod:dream/birch_forest",
+    "quarkmod:dream/old_growth_birch_forest",
+    "quarkmod:dream/flower_forest",
+    "quarkmod:dream/meadow",
+    "quarkmod:dream/cherry_grove"
+  ]
+}
