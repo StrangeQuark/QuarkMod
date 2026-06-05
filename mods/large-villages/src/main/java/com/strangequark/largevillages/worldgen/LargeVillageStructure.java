@@ -97,24 +97,39 @@ public class LargeVillageStructure extends Structure {
 
     @Override
     protected Optional<StructurePosition> getStructurePosition(Context context) {
+        return getStructurePosition(context, new TerrainSampler(context));
+    }
+
+    Optional<StructurePosition> getStructurePosition(Context context, TerrainSampler terrain) {
+        VillageStart start = getVillageStart(context, terrain);
+        return start == null
+                ? Optional.empty()
+                : Optional.of(new StructurePosition(start.center(), collector -> createPlan(context, terrain, start.center(), true)
+                .ifPresent(plan -> placePlan(collector, plan))));
+    }
+
+    boolean canGenerateAt(Context context, TerrainSampler terrain) {
+        VillageStart start = getVillageStart(context, terrain);
+        return start != null && createPlan(context, terrain, start.center(), false).isPresent();
+    }
+
+    private VillageStart getVillageStart(Context context, TerrainSampler terrain) {
         ChunkPos chunkPos = context.chunkPos();
         int x = chunkPos.getCenterX();
         int z = chunkPos.getCenterZ();
 
-        if (!isCenterBiomeValid(context, x, z)) {
-            return Optional.empty();
-        }
-
-        TerrainSampler terrain = new TerrainSampler(context);
         int y = terrain.getPlacementY(x, z);
         BlockPos center = new BlockPos(x, y, z);
 
-        if (!isLocateAreaSuitable(terrain, x, z, y)) {
-            return Optional.empty();
+        if (!isCenterBiomeValid(context, center)) {
+            return null;
         }
 
-        return Optional.of(new StructurePosition(center, collector -> createPlan(context, terrain, center)
-                .ifPresent(plan -> placePlan(collector, plan))));
+        if (!isLocateAreaSuitable(terrain, x, z, y)) {
+            return null;
+        }
+
+        return new VillageStart(center);
     }
 
     @Override
@@ -122,7 +137,7 @@ public class LargeVillageStructure extends Structure {
         return ModStructureTypes.LARGE_VILLAGE;
     }
 
-    private Optional<VillagePlan> createPlan(Context context, TerrainSampler terrain, BlockPos center) {
+    private Optional<VillagePlan> createPlan(Context context, TerrainSampler terrain, BlockPos center, boolean includeVillagers) {
         Random random = context.random();
         StructureTemplateManager templateManager = context.structureTemplateManager();
         Map<BuildingInfoKey, BuildingPlacementInfo> buildingInfoCache = new HashMap<>();
@@ -160,7 +175,9 @@ public class LargeVillageStructure extends Structure {
             return Optional.empty();
         }
 
-        addVillagerPieces(terrain, templateManager, pieces, center, layout.get().lots(), targetBuildings, random);
+        if (includeVillagers) {
+            addVillagerPieces(terrain, templateManager, pieces, center, layout.get().lots(), targetBuildings, random);
+        }
         return Optional.of(new VillagePlan(pieces));
     }
 
@@ -986,11 +1003,11 @@ public class LargeVillageStructure extends Structure {
         return isFootprintSuitable(terrain, box, maxHeightSpread, sampleStep);
     }
 
-    private boolean isCenterBiomeValid(Context context, int x, int z) {
+    private boolean isCenterBiomeValid(Context context, BlockPos center) {
         return context.biomePredicate().test(context.chunkGenerator().getBiomeSource().getBiome(
-                BiomeCoords.fromBlock(x),
-                BiomeCoords.fromBlock(context.chunkGenerator().getSeaLevel()),
-                BiomeCoords.fromBlock(z),
+                BiomeCoords.fromBlock(center.getX()),
+                BiomeCoords.fromBlock(center.getY()),
+                BiomeCoords.fromBlock(center.getZ()),
                 context.noiseConfig().getMultiNoiseSampler()
         ));
     }
@@ -1003,14 +1020,34 @@ public class LargeVillageStructure extends Structure {
             int y = terrain.getPlacementY(centerX + direction.dx * LOCATE_TERRAIN_RADIUS, centerZ + direction.dz * LOCATE_TERRAIN_RADIUS);
             minY = Math.min(minY, y);
             maxY = Math.max(maxY, y);
+            if (maxY - minY > 12) {
+                return false;
+            }
         }
 
-        return maxY - minY <= 12;
+        return true;
     }
 
     private boolean isFootprintSuitable(TerrainSampler terrain, BlockBox box, int maxHeightSpread, int sampleStep) {
-        TerrainStats stats = sampleTerrain(terrain, box, sampleStep);
-        return !stats.hasFluid() && stats.heightSpread() <= maxHeightSpread;
+        int minY = Integer.MAX_VALUE;
+        int maxY = Integer.MIN_VALUE;
+
+        for (int x : sampleAxis(box.getMinX(), box.getMaxX(), sampleStep)) {
+            for (int z : sampleAxis(box.getMinZ(), box.getMaxZ(), sampleStep)) {
+                SurfaceSample sample = terrain.getSurfaceSample(x, z);
+                int y = sample.placementY();
+                minY = Math.min(minY, y);
+                maxY = Math.max(maxY, y);
+                if (maxY - minY > maxHeightSpread) {
+                    return false;
+                }
+                if (sample.hasFluidNearSurface()) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     private TerrainStats sampleTerrain(TerrainSampler terrain, BlockBox box, int sampleStep) {
@@ -1022,8 +1059,9 @@ public class LargeVillageStructure extends Structure {
 
         for (int x : sampleAxis(box.getMinX(), box.getMaxX(), sampleStep)) {
             for (int z : sampleAxis(box.getMinZ(), box.getMaxZ(), sampleStep)) {
-                int y = terrain.getPlacementY(x, z);
-                if (terrain.hasFluidNearSurface(x, z, y)) {
+                SurfaceSample sample = terrain.getSurfaceSample(x, z);
+                int y = sample.placementY();
+                if (sample.hasFluidNearSurface()) {
                     hasFluid = true;
                 }
 
@@ -1048,7 +1086,17 @@ public class LargeVillageStructure extends Structure {
     }
 
     private int getAveragePlacementY(TerrainSampler terrain, BlockBox box, int sampleStep) {
-        return sampleTerrain(terrain, box, sampleStep).averageY();
+        int totalY = 0;
+        int samples = 0;
+
+        for (int x : sampleAxis(box.getMinX(), box.getMaxX(), sampleStep)) {
+            for (int z : sampleAxis(box.getMinZ(), box.getMaxZ(), sampleStep)) {
+                totalY += terrain.getPlacementY(x, z);
+                samples++;
+            }
+        }
+
+        return totalY / Math.max(1, samples);
     }
 
     private static List<Integer> sampleAxis(int min, int max, int step) {
@@ -1059,7 +1107,26 @@ public class LargeVillageStructure extends Structure {
         if (values.isEmpty() || values.get(values.size() - 1) != max) {
             values.add(max);
         }
-        return values;
+        return extremesFirst(values);
+    }
+
+    private static List<Integer> extremesFirst(List<Integer> values) {
+        List<Integer> ordered = new ArrayList<>(values.size());
+        addIfAbsent(ordered, values.get(values.size() / 2));
+        addIfAbsent(ordered, values.get(0));
+        addIfAbsent(ordered, values.get(values.size() - 1));
+
+        for (int value : values) {
+            addIfAbsent(ordered, value);
+        }
+
+        return ordered;
+    }
+
+    private static void addIfAbsent(List<Integer> values, int value) {
+        if (!values.contains(value)) {
+            values.add(value);
+        }
     }
 
     private static boolean intersectsAnyXZ(BlockBox box, List<BlockBox> occupied) {
@@ -1494,6 +1561,9 @@ public class LargeVillageStructure extends Structure {
     private record VillagePlan(List<PiecePlan> pieces) {
     }
 
+    private record VillageStart(BlockPos center) {
+    }
+
     private record PiecePlan(
             StructureTemplateManager templateManager,
             StructurePoolElement element,
@@ -1542,25 +1612,60 @@ public class LargeVillageStructure extends Structure {
         }
     }
 
-    private static class TerrainSampler {
+    private record SurfaceSample(int placementY, boolean hasFluidNearSurface) {
+    }
+
+    static class TerrainSampler {
         private final Context context;
         private final Map<Long, Integer> placementYCache = new HashMap<>();
         private final Map<Long, Boolean> fluidNearSurfaceCache = new HashMap<>();
+        private final Map<Long, SurfaceSample> surfaceSampleCache = new HashMap<>();
 
-        private TerrainSampler(Context context) {
+        TerrainSampler(Context context) {
             this.context = context;
         }
 
         private int getPlacementY(int x, int z) {
-            return placementYCache.computeIfAbsent(xzKey(x, z), ignored -> context.chunkGenerator()
+            long key = xzKey(x, z);
+            SurfaceSample surfaceSample = surfaceSampleCache.get(key);
+            if (surfaceSample != null) {
+                return surfaceSample.placementY();
+            }
+            return placementYCache.computeIfAbsent(key, ignored -> context.chunkGenerator()
                     .getHeightOnGround(x, z, Heightmap.Type.WORLD_SURFACE_WG, context.world(), context.noiseConfig()));
         }
 
         private boolean hasFluidNearSurface(int x, int z, int placementY) {
-            return fluidNearSurfaceCache.computeIfAbsent(xzKey(x, z), ignored -> {
+            long key = xzKey(x, z);
+            SurfaceSample surfaceSample = surfaceSampleCache.get(key);
+            if (surfaceSample != null) {
+                return surfaceSample.hasFluidNearSurface();
+            }
+            return fluidNearSurfaceCache.computeIfAbsent(key, ignored -> {
                 VerticalBlockSample sample = context.chunkGenerator().getColumnSample(x, z, context.world(), context.noiseConfig());
                 return LargeVillageStructure.hasFluidNearSurface(sample, placementY - 1);
             });
+        }
+
+        private SurfaceSample getSurfaceSample(int x, int z) {
+            long key = xzKey(x, z);
+            return surfaceSampleCache.computeIfAbsent(key, ignored -> {
+                VerticalBlockSample sample = context.chunkGenerator().getColumnSample(x, z, context.world(), context.noiseConfig());
+                int placementY = getPlacementY(sample);
+                boolean hasFluidNearSurface = LargeVillageStructure.hasFluidNearSurface(sample, placementY - 1);
+                placementYCache.put(key, placementY);
+                fluidNearSurfaceCache.put(key, hasFluidNearSurface);
+                return new SurfaceSample(placementY, hasFluidNearSurface);
+            });
+        }
+
+        private int getPlacementY(VerticalBlockSample sample) {
+            for (int y = context.world().getTopYInclusive(); y >= context.world().getBottomY(); y--) {
+                if (Heightmap.Type.WORLD_SURFACE_WG.getBlockPredicate().test(sample.getState(y))) {
+                    return y + 1;
+                }
+            }
+            return context.world().getBottomY();
         }
 
         private static long xzKey(int x, int z) {
