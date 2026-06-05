@@ -1,0 +1,7 @@
+{
+  "item.quarkmod.dream_potion": "Dream Potion",
+  "message.quarkmod.dream_dimension_missing": "The Dream Dimension is not loaded.",
+  "message.quarkmod.dream_potion_ready": "Sleep in a bed to enter the Dream Dimension.",
+  "message.quarkmod.entered_dream": "You drift into the Dream Dimension.",
+  "message.quarkmod.left_dream": "You wake from the Dream Dimension."
+}
