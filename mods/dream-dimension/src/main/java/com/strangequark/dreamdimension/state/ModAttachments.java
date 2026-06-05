@@ -14,6 +14,13 @@ public final class ModAttachments {
                     .copyOnDeath()
                     .initializer(DreamState::empty)
     );
+    public static final AttachmentType<DreamInventoryState> DREAM_INVENTORY_STATE = AttachmentRegistry.create(
+            DreamDimensionMod.id("dream_inventory_state"),
+            builder -> builder
+                    .persistent(DreamInventoryState.CODEC)
+                    .copyOnDeath()
+                    .initializer(DreamInventoryState::empty)
+    );
 
     private ModAttachments() {
     }
@@ -31,5 +38,13 @@ public final class ModAttachments {
 
     public static void clearDreamState(ServerPlayerEntity player) {
         ((AttachmentTarget) player).setAttached(DREAM_STATE, DreamState.empty());
+    }
+
+    public static DreamInventoryState getDreamInventoryState(ServerPlayerEntity player) {
+        return ((AttachmentTarget) player).getAttachedOrCreate(DREAM_INVENTORY_STATE);
+    }
+
+    public static void setDreamInventoryState(ServerPlayerEntity player, DreamInventoryState state) {
+        ((AttachmentTarget) player).setAttached(DREAM_INVENTORY_STATE, state);
     }
 }

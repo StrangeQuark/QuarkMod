@@ -125,6 +125,7 @@ public final class DreamDimensionEvents {
         BlockPos landingFeet = prepareDreamLanding(dreamWorld);
         ServerPlayerEntity teleported = teleport(player, dreamWorld, landingFeet.toBottomCenterPos(), player.getYaw(), player.getPitch());
         ModAttachments.setDreamState(teleported, ModAttachments.getDreamState(teleported).withReturnLocation(returnLocation));
+        DreamInventorySwapper.activateDreamInventory(teleported);
         applyDreamGravity(teleported);
         spawnDreamBurst(dreamWorld, teleported.getPos().add(0.0D, 1.0D, 0.0D));
         teleported.playSoundToPlayer(SoundEvents.BLOCK_AMETHYST_BLOCK_RESONATE, SoundCategory.AMBIENT, 0.6F, 0.55F);
@@ -138,6 +139,7 @@ public final class DreamDimensionEvents {
 
         ServerPlayerEntity teleported = teleport(player, target.world(), target.position(), target.yaw(), target.pitch());
         removeDreamGravity(teleported);
+        DreamInventorySwapper.deactivateDreamInventory(teleported);
         ModAttachments.clearDreamState(teleported);
         teleported.playSoundToPlayer(SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.AMBIENT, 0.55F, 1.35F);
         teleported.sendMessage(Text.translatable("message.quarkmod.left_dream"), true);
@@ -245,7 +247,10 @@ public final class DreamDimensionEvents {
 
     private static void tickPlayers(MinecraftServer server) {
         for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-            if (isDreamWorld(player.getWorld())) {
+            boolean inDreamWorld = isDreamWorld(player.getWorld());
+            DreamInventorySwapper.alignWithWorld(player, inDreamWorld);
+
+            if (inDreamWorld) {
                 applyDreamGravity(player);
             } else {
                 removeDreamGravity(player);
