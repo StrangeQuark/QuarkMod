@@ -58,7 +58,13 @@
         "quarkmod:dream/frozen_peaks",
         "quarkmod:dream/dripstone_caves",
         "quarkmod:dream/lush_caves",
-        "quarkmod:dream/deep_dark"
+        "quarkmod:dream/deep_dark",
+        "quarkmod:dream/nether_wastes",
+        "quarkmod:dream/soul_sand_valley",
+        "quarkmod:dream/crimson_forest",
+        "quarkmod:dream/warped_forest",
+        "quarkmod:dream/basalt_deltas",
+        "quarkmod:dream/the_end"
       ],
       "scale": 5
     },

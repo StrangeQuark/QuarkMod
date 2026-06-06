@@ -20,6 +20,7 @@ import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.entry.RegistryEntry;
 
+import java.util.List;
 import java.util.Optional;
 
 public final class ModPotions {
@@ -47,6 +48,10 @@ public final class ModPotions {
         ItemGroupEvents.modifyEntriesEvent(ItemGroups.FOOD_AND_DRINK).register(entries ->
                 entries.add(createStack(Items.POTION, DREAM_POTION))
         );
+        ItemGroupEvents.MODIFY_ENTRIES_ALL.register((group, entries) -> {
+            normalizeDreamPotionCreativeEntries(entries.getDisplayStacks());
+            normalizeDreamPotionCreativeEntries(entries.getSearchTabStacks());
+        });
     }
 
     public static void registerBrewingRecipes() {
@@ -75,6 +80,13 @@ public final class ModPotions {
                 && (potionContents.matches(STRANGE_POTION)
                 || potionContents.matches(RESTLESS_POTION)
                 || potionContents.matches(DREAM_POTION));
+    }
+
+    public static boolean isUnsupportedDreamPotionVariant(ItemStack stack) {
+        return isDreamPotionFamily(stack)
+                && (stack.isOf(Items.SPLASH_POTION)
+                || stack.isOf(Items.LINGERING_POTION)
+                || stack.isOf(Items.TIPPED_ARROW));
     }
 
     public static ItemStack createStack(Item item, RegistryEntry<Potion> potion) {
@@ -110,6 +122,13 @@ public final class ModPotions {
             return Optional.of(RESTLESS_POTION_COLOR);
         }
         return Optional.empty();
+    }
+
+    private static void normalizeDreamPotionCreativeEntries(List<ItemStack> stacks) {
+        stacks.removeIf(ModPotions::isUnsupportedDreamPotionVariant);
+        for (ItemStack stack : stacks) {
+            applyDreamPotionColor(stack);
+        }
     }
 
     private static RegistryEntry<Potion> register(
