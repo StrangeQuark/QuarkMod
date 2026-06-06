@@ -66,12 +66,13 @@ public final class DreamDimensionEvents {
     private static final int DREAM_LANDING_Y = 96;
     private static final int DREAM_LANDING_Z = 0;
     private static final BlockPos DREAM_BED_SEARCH_ORIGIN = new BlockPos(DREAM_LANDING_X, DREAM_LANDING_Y, DREAM_LANDING_Z);
-    private static final int DREAM_BED_SEARCH_RADIUS = 1024;
     private static final int DREAM_VILLAGE_LOCATE_RADIUS = 128;
     private static final int DREAM_VILLAGE_BED_SEARCH_RADIUS = 192;
     private static final int DREAM_VILLAGE_GENERATION_RADIUS = 8;
-    private static final int DREAM_FALLBACK_BED_SEARCH_RADIUS = 48;
-    private static final int DREAM_FALLBACK_BED_PLATFORM_RADIUS = 3;
+    private static final int DREAM_NO_VILLAGE_BED_SEARCH_RADIUS = 128;
+    private static final int DREAM_NO_VILLAGE_BED_SCAN_RADIUS = 2;
+    private static final int DREAM_BED_SCAN_BELOW_SURFACE = 32;
+    private static final int DREAM_BED_SCAN_ABOVE_SURFACE = 8;
     private static final int LANDING_ISLAND_RADIUS = 7;
     private static final int DREAM_TRANSITION_TICKS = 80;
     private static final long DREAM_SOUND_INTERVAL = 170L;
@@ -312,20 +313,14 @@ public final class DreamDimensionEvents {
     }
 
     private static Optional<BlockPos> findNearestDreamBed(ServerWorld world, BlockPos origin) {
-        Optional<BlockPos> knownBed = findKnownDreamBed(world, origin, DREAM_BED_SEARCH_RADIUS);
-        if (knownBed.isPresent()) {
-            return knownBed;
-        }
-
         BlockPos villagePos = world.locateStructure(DREAM_VILLAGES, origin, DREAM_VILLAGE_LOCATE_RADIUS, false);
         if (villagePos == null) {
-            return createFallbackDreamBed(world, origin);
+            return findNearestBedBlockInChunkRings(world, origin, DREAM_NO_VILLAGE_BED_SCAN_RADIUS)
+                    .or(() -> findKnownDreamBed(world, origin, DREAM_NO_VILLAGE_BED_SEARCH_RADIUS));
         }
 
-        generateChunksAround(world, villagePos, DREAM_VILLAGE_GENERATION_RADIUS);
-        return findKnownDreamBed(world, villagePos, DREAM_VILLAGE_BED_SEARCH_RADIUS)
-                .or(() -> findKnownDreamBed(world, origin, DREAM_BED_SEARCH_RADIUS))
-                .or(() -> createFallbackDreamBed(world, villagePos));
+        return findNearestBedBlockInChunkRings(world, villagePos, DREAM_VILLAGE_GENERATION_RADIUS)
+                .or(() -> findKnownDreamBed(world, villagePos, DREAM_VILLAGE_BED_SEARCH_RADIUS));
     }
 
     private static Optional<BlockPos> findKnownDreamBed(ServerWorld world, BlockPos origin, int radius) {
@@ -387,96 +382,74 @@ public final class DreamDimensionEvents {
                 .map(position -> new DreamSpawnTarget(position, yaw, 0.0F));
     }
 
-    private static Optional<BlockPos> createFallbackDreamBed(ServerWorld world, BlockPos origin) {
-        world.getChunk(origin.getX() >> 4, origin.getZ() >> 4);
+    private static Optional<BlockPos> findNearestBedBlockInChunkRings(ServerWorld world, BlockPos center, int chunkRadius) {
+        ChunkPos centerChunk = new ChunkPos(center);
+        BedBlockSearchResult bestFallback = new BedBlockSearchResult();
 
-        return findFallbackBedFoot(world, origin)
-                .map(foot -> {
-                    Direction facing = Direction.SOUTH;
-                    BlockPos head = foot.offset(facing);
-                    prepareFallbackBedArea(world, foot, head);
-                    world.setBlockState(
-                            foot,
-                            Blocks.WHITE_BED.getDefaultState()
-                                    .with(BedBlock.FACING, facing)
-                                    .with(BedBlock.PART, BedPart.FOOT)
-                                    .with(BedBlock.OCCUPIED, false),
-                            Block.NOTIFY_ALL
-                    );
-                    world.setBlockState(
-                            head,
-                            Blocks.WHITE_BED.getDefaultState()
-                                    .with(BedBlock.FACING, facing)
-                                    .with(BedBlock.PART, BedPart.HEAD)
-                                    .with(BedBlock.OCCUPIED, false),
-                            Block.NOTIFY_ALL
-                    );
-                    return head;
-                })
-                .filter(pos -> resolveBedSpawn(world, pos).isPresent());
-    }
-
-    private static Optional<BlockPos> findFallbackBedFoot(ServerWorld world, BlockPos origin) {
-        for (int radius = 8; radius <= DREAM_FALLBACK_BED_SEARCH_RADIUS; radius += 4) {
-            for (int dx = -radius; dx <= radius; dx += 4) {
-                for (int dz = -radius; dz <= radius; dz += 4) {
+        for (int radius = 0; radius <= chunkRadius; radius++) {
+            BedBlockSearchResult ringResult = new BedBlockSearchResult();
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (int dz = -radius; dz <= radius; dz++) {
                     if (Math.max(Math.abs(dx), Math.abs(dz)) != radius) {
                         continue;
                     }
 
-                    BlockPos foot = fallbackBedFootAt(world, origin.getX() + dx, origin.getZ() + dz);
-                    if (canPrepareFallbackBed(world, foot, Direction.SOUTH)) {
-                        return Optional.of(foot);
+                    int chunkX = centerChunk.x + dx;
+                    int chunkZ = centerChunk.z + dz;
+                    world.getChunk(chunkX, chunkZ);
+                    ringResult.merge(findNearestBedBlockInChunk(world, chunkX, chunkZ, center));
+                }
+            }
+
+            if (ringResult.preferredBed().isPresent()) {
+                return ringResult.preferredBed();
+            }
+
+            bestFallback.acceptFallback(ringResult);
+        }
+
+        return bestFallback.fallbackBed();
+    }
+
+    private static BedBlockSearchResult findNearestBedBlockInChunk(ServerWorld world, int chunkX, int chunkZ, BlockPos center) {
+        BedBlockSearchResult result = new BedBlockSearchResult();
+        int minWorldY = world.getBottomY();
+        int maxWorldY = world.getBottomY() + world.getHeight() - 1;
+        int startX = chunkX << 4;
+        int startZ = chunkZ << 4;
+        BlockPos.Mutable mutable = new BlockPos.Mutable();
+
+        for (int localX = 0; localX < 16; localX++) {
+            int x = startX + localX;
+            for (int localZ = 0; localZ < 16; localZ++) {
+                int z = startZ + localZ;
+                int surfaceY = MathHelper.clamp(
+                        world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z),
+                        minWorldY,
+                        maxWorldY
+                );
+                int minY = Math.max(minWorldY, surfaceY - DREAM_BED_SCAN_BELOW_SURFACE);
+                int maxY = Math.min(maxWorldY, surfaceY + DREAM_BED_SCAN_ABOVE_SURFACE);
+
+                for (int y = maxY; y >= minY; y--) {
+                    mutable.set(x, y, z);
+                    BlockState state = world.getBlockState(mutable);
+                    if (!(state.getBlock() instanceof BedBlock) || state.get(BedBlock.PART) != BedPart.HEAD) {
+                        continue;
                     }
+
+                    Optional<BlockPos> normalized = normalizeBedPos(world, mutable.toImmutable());
+                    if (normalized.isEmpty() || resolveBedSpawn(world, normalized.get()).isEmpty()) {
+                        continue;
+                    }
+
+                    BlockPos bed = normalized.get();
+                    result.accept(bed, !state.isOf(Blocks.WHITE_BED), bed.getSquaredDistance(center));
                 }
             }
         }
 
-        return Optional.empty();
-    }
-
-    private static BlockPos fallbackBedFootAt(ServerWorld world, int x, int z) {
-        int minY = world.getBottomY() + 2;
-        int maxY = world.getBottomY() + world.getHeight() - 4;
-        int bedY = MathHelper.clamp(world.getTopY(Heightmap.Type.MOTION_BLOCKING_NO_LEAVES, x, z), minY, maxY);
-        return new BlockPos(x, bedY, z);
-    }
-
-    private static boolean canPrepareFallbackBed(ServerWorld world, BlockPos foot, Direction facing) {
-        BlockPos head = foot.offset(facing);
-        return world.getWorldBorder().contains(foot)
-                && world.getWorldBorder().contains(head)
-                && foot.getY() > world.getBottomY()
-                && foot.getY() + 3 < world.getBottomY() + world.getHeight();
-    }
-
-    private static void prepareFallbackBedArea(ServerWorld world, BlockPos foot, BlockPos head) {
-        int minX = Math.min(foot.getX(), head.getX()) - DREAM_FALLBACK_BED_PLATFORM_RADIUS;
-        int maxX = Math.max(foot.getX(), head.getX()) + DREAM_FALLBACK_BED_PLATFORM_RADIUS;
-        int minZ = Math.min(foot.getZ(), head.getZ()) - DREAM_FALLBACK_BED_PLATFORM_RADIUS;
-        int maxZ = Math.max(foot.getZ(), head.getZ()) + DREAM_FALLBACK_BED_PLATFORM_RADIUS;
-        int floorY = foot.getY() - 1;
-
-        for (int x = minX; x <= maxX; x++) {
-            for (int z = minZ; z <= maxZ; z++) {
-                world.setBlockState(new BlockPos(x, floorY - 2, z), Blocks.STONE.getDefaultState(), Block.NOTIFY_ALL);
-                world.setBlockState(new BlockPos(x, floorY - 1, z), Blocks.DIRT.getDefaultState(), Block.NOTIFY_ALL);
-                world.setBlockState(new BlockPos(x, floorY, z), Blocks.GRASS_BLOCK.getDefaultState(), Block.NOTIFY_ALL);
-
-                for (int y = foot.getY(); y <= foot.getY() + 3; y++) {
-                    world.setBlockState(new BlockPos(x, y, z), Blocks.AIR.getDefaultState(), Block.NOTIFY_ALL);
-                }
-            }
-        }
-    }
-
-    private static void generateChunksAround(ServerWorld world, BlockPos center, int chunkRadius) {
-        ChunkPos centerChunk = new ChunkPos(center);
-        for (int dx = -chunkRadius; dx <= chunkRadius; dx++) {
-            for (int dz = -chunkRadius; dz <= chunkRadius; dz++) {
-                world.getChunk(centerChunk.x + dx, centerChunk.z + dz);
-            }
-        }
+        return result;
     }
 
     private static BlockPos prepareDreamLanding(ServerWorld world) {
@@ -714,6 +687,46 @@ public final class DreamDimensionEvents {
     }
 
     private record ReturnTarget(ServerWorld world, Vec3d position, float yaw, float pitch) {
+    }
+
+    private static final class BedBlockSearchResult {
+        private BlockPos preferredBed;
+        private double preferredDistance = Double.MAX_VALUE;
+        private BlockPos fallbackBed;
+        private double fallbackDistance = Double.MAX_VALUE;
+
+        private void accept(BlockPos bedPos, boolean preferred, double distance) {
+            if (preferred) {
+                if (distance < preferredDistance) {
+                    preferredBed = bedPos;
+                    preferredDistance = distance;
+                }
+            } else if (distance < fallbackDistance) {
+                fallbackBed = bedPos;
+                fallbackDistance = distance;
+            }
+        }
+
+        private void merge(BedBlockSearchResult other) {
+            if (other.preferredBed != null) {
+                accept(other.preferredBed, true, other.preferredDistance);
+            }
+            acceptFallback(other);
+        }
+
+        private void acceptFallback(BedBlockSearchResult other) {
+            if (other.fallbackBed != null) {
+                accept(other.fallbackBed, false, other.fallbackDistance);
+            }
+        }
+
+        private Optional<BlockPos> preferredBed() {
+            return Optional.ofNullable(preferredBed);
+        }
+
+        private Optional<BlockPos> fallbackBed() {
+            return Optional.ofNullable(fallbackBed);
+        }
     }
 
 }
