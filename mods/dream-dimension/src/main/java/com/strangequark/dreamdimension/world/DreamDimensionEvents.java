@@ -230,7 +230,6 @@ public final class DreamDimensionEvents {
         applyDreamGravity(teleported);
         spawnDreamBurst(dreamWorld, teleported.getPos().add(0.0D, 1.0D, 0.0D));
         teleported.playSoundToPlayer(SoundEvents.BLOCK_AMETHYST_BLOCK_RESONATE, SoundCategory.AMBIENT, 0.6F, 0.55F);
-        teleported.sendMessage(Text.translatable("message.quarkmod.entered_dream"), true);
         clearDreamTransition(teleported);
     }
 
@@ -249,7 +248,6 @@ public final class DreamDimensionEvents {
         DreamInventorySwapper.deactivateDreamInventory(teleported);
         ModAttachments.clearDreamState(teleported);
         teleported.playSoundToPlayer(SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.AMBIENT, 0.55F, 1.35F);
-        teleported.sendMessage(Text.translatable("message.quarkmod.left_dream"), true);
         clearDreamTransition(teleported);
     }
 

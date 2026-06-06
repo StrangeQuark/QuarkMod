@@ -8,7 +8,6 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
-import net.minecraft.text.Text;
 import net.minecraft.world.World;
 
 public class DreamPotionItem extends Item {
@@ -31,7 +30,6 @@ public class DreamPotionItem extends Item {
                     true,
                     true
             ));
-            player.sendMessage(Text.translatable("message.quarkmod.dream_potion_ready"), true);
             world.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.PLAYERS, 0.7F, 0.75F);
         }
 
