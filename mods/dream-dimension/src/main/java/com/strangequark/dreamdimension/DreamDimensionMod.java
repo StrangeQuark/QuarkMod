@@ -2,6 +2,7 @@ package com.strangequark.dreamdimension;
 
 import com.strangequark.dreamdimension.item.ModItems;
 import com.strangequark.dreamdimension.block.ModBlocks;
+import com.strangequark.dreamdimension.effect.ModStatusEffects;
 import com.strangequark.dreamdimension.network.DreamTransitionPayload;
 import com.strangequark.dreamdimension.state.ModAttachments;
 import com.strangequark.dreamdimension.village.DreamVillagers;
@@ -28,6 +29,7 @@ public class DreamDimensionMod implements ModInitializer {
         ModAttachments.registerAttachments();
         ModStructureTypes.registerStructureTypes();
         ModBlocks.registerModBlocks();
+        ModStatusEffects.registerStatusEffects();
         ModItems.registerModItems();
         DreamVillagers.register();
         DreamDimensionEvents.registerEvents();

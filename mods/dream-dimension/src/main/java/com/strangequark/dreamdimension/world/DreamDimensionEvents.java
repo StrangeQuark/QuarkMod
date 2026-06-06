@@ -1,6 +1,7 @@
 package com.strangequark.dreamdimension.world;
 
 import com.strangequark.dreamdimension.DreamDimensionMod;
+import com.strangequark.dreamdimension.effect.ModStatusEffects;
 import com.strangequark.dreamdimension.network.DreamTransitionPayload;
 import com.strangequark.dreamdimension.state.DreamReturnLocation;
 import com.strangequark.dreamdimension.state.DreamState;
@@ -107,7 +108,7 @@ public final class DreamDimensionEvents {
 
         ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
             if (!alive && isDreamWorld(oldPlayer.getWorld())) {
-                returnFromDream(newPlayer, ModAttachments.getDreamState(newPlayer));
+                returnFromDreamDeath(newPlayer);
             }
         });
 
@@ -134,7 +135,7 @@ public final class DreamDimensionEvents {
             }
 
             if (player instanceof ServerPlayerEntity serverPlayer) {
-                startDreamExit(serverPlayer, hitResult.getBlockPos());
+                startDreamExit(serverPlayer, normalizeTransitionBedPos(serverPlayer.getWorld(), hitResult.getBlockPos()));
             }
             return ActionResult.SUCCESS;
         }
@@ -143,13 +144,16 @@ public final class DreamDimensionEvents {
             return ActionResult.PASS;
         }
 
-        DreamState dreamState = ModAttachments.getDreamState(serverPlayer);
-        if (!dreamState.readyToDream()) {
+        if (!serverPlayer.hasStatusEffect(ModStatusEffects.DREAM_READINESS)) {
             return ActionResult.PASS;
         }
 
-        startDreamEntry(serverPlayer, hitResult.getBlockPos());
+        startDreamEntry(serverPlayer, normalizeTransitionBedPos(serverPlayer.getWorld(), hitResult.getBlockPos()));
         return ActionResult.SUCCESS;
+    }
+
+    private static BlockPos normalizeTransitionBedPos(ServerWorld world, BlockPos bedPos) {
+        return normalizeBedPos(world, bedPos).orElse(bedPos);
     }
 
     private static void startDreamEntry(ServerPlayerEntity player, BlockPos bedPos) {
@@ -217,6 +221,7 @@ public final class DreamDimensionEvents {
 
         DreamState dreamState = ModAttachments.getDreamState(player);
         ModAttachments.setDreamState(player, dreamState.withReturnLocation(returnLocation));
+        player.removeStatusEffect(ModStatusEffects.DREAM_READINESS);
         wakeFromTransitionBed(player);
 
         ServerPlayerEntity teleported = teleport(player, dreamWorld, target.position(), target.yaw(), target.pitch());
@@ -245,6 +250,24 @@ public final class DreamDimensionEvents {
         ModAttachments.clearDreamState(teleported);
         teleported.playSoundToPlayer(SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.AMBIENT, 0.55F, 1.35F);
         teleported.sendMessage(Text.translatable("message.quarkmod.left_dream"), true);
+        clearDreamTransition(teleported);
+    }
+
+    private static void returnFromDreamDeath(ServerPlayerEntity player) {
+        TeleportTarget respawnTarget = player.getRespawnTarget(true, TeleportTarget.NO_OP);
+        finishDreamDeathRespawn(player, new ReturnTarget(
+                respawnTarget.world(),
+                respawnTarget.position(),
+                respawnTarget.yaw(),
+                respawnTarget.pitch()
+        ));
+    }
+
+    private static void finishDreamDeathRespawn(ServerPlayerEntity player, ReturnTarget target) {
+        ServerPlayerEntity teleported = teleport(player, target.world(), target.position(), target.yaw(), target.pitch());
+        removeDreamGravity(teleported);
+        DreamInventorySwapper.deactivateDreamInventory(teleported);
+        ModAttachments.clearDreamState(teleported);
         clearDreamTransition(teleported);
     }
 
@@ -643,7 +666,7 @@ public final class DreamDimensionEvents {
             if (isDreamWorld(player.getWorld()) != (kind == DreamTransitionKind.EXIT)) {
                 return false;
             }
-            return player.isAlive();
+            return player.isAlive() && player.isSleeping();
         }
 
         private void resolveTarget(ServerPlayerEntity player) {
