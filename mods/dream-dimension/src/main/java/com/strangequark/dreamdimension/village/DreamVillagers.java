@@ -2,13 +2,12 @@ package com.strangequark.dreamdimension.village;
 
 import com.google.common.collect.ImmutableSet;
 import com.strangequark.dreamdimension.DreamDimensionMod;
-import com.strangequark.dreamdimension.item.ModItems;
+import com.strangequark.dreamdimension.potion.ModPotions;
 import com.strangequark.dreamdimension.world.DreamDimensionEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.object.builder.v1.trade.TradeOfferHelper;
-import net.minecraft.component.type.PotionContentsComponent;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.mob.MobEntity;
@@ -110,7 +109,7 @@ public final class DreamVillagers {
         trades(SOMNOLOGIST, 1,
                 buy(Items.PHANTOM_MEMBRANE, 3, 1, 32, 2),
                 buy(Items.AMETHYST_SHARD, 8, 1, 32, 2),
-                sell(ModItems.DREAM_POTION, 1, 12, 16, 6));
+                sellPotion(ModPotions.DREAM_POTION, 12, 16, 6));
         trades(SOMNOLOGIST, 2,
                 sellPotion(Potions.SLOW_FALLING, 9, 24, 8),
                 sell(Items.LIGHT_BLUE_BED, 1, 7, 16, 6),
@@ -302,7 +301,7 @@ public final class DreamVillagers {
     }
 
     private static TradeOffers.Factory sellPotion(RegistryEntry<net.minecraft.potion.Potion> potion, int emeralds, int maxUses, int experience) {
-        return sell(PotionContentsComponent.createStack(Items.POTION, potion), emeralds, maxUses, experience);
+        return sell(ModPotions.createStack(Items.POTION, potion), emeralds, maxUses, experience);
     }
 
     private static TradeOffers.Factory sell(ItemStack result, int emeralds, int maxUses, int experience) {

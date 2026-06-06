@@ -1,0 +1,12 @@
+{
+	"required": true,
+	"package": "com.strangequark.dreamdimension.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"mixins": [
+		"BrewingRecipeRegistryMixin",
+		"TippedArrowRecipeMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

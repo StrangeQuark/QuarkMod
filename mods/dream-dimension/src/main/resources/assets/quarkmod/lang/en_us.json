@@ -14,6 +14,8 @@
   "entity.minecraft.villager.quarkmod.somnologist": "Somnologist",
   "entity.minecraft.villager.quarkmod.stargazer": "Stargazer",
   "effect.quarkmod.dream_readiness": "Dream Potion",
-  "item.quarkmod.dream_potion": "Dream Potion",
+  "item.minecraft.potion.effect.quarkmod.dream_potion": "Dream Potion",
+  "item.minecraft.potion.effect.quarkmod.restless_potion": "Restless Potion",
+  "item.minecraft.potion.effect.quarkmod.strange_potion": "Strange Potion",
   "message.quarkmod.dream_dimension_missing": "The Dream Dimension is not loaded."
 }
