@@ -6,6 +6,9 @@
 		"BrewingRecipeRegistryMixin",
 		"TippedArrowRecipeMixin"
 	],
+	"client": [
+		"client.SkyRenderingMixin"
+	],
 	"injectors": {
 		"defaultRequire": 1
 	}
