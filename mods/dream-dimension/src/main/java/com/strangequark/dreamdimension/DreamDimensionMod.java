@@ -2,6 +2,7 @@ package com.strangequark.dreamdimension;
 
 import com.strangequark.dreamdimension.block.ModBlocks;
 import com.strangequark.dreamdimension.effect.ModStatusEffects;
+import com.strangequark.dreamdimension.loot.DreamLootTables;
 import com.strangequark.dreamdimension.network.DreamTransitionPayload;
 import com.strangequark.dreamdimension.potion.ModPotions;
 import com.strangequark.dreamdimension.state.ModAttachments;
@@ -33,6 +34,7 @@ public class DreamDimensionMod implements ModInitializer {
         ModPotions.registerPotions();
         ModPotions.registerBrewingRecipes();
         DreamVillagers.register();
+        DreamLootTables.register();
         DreamDimensionEvents.registerEvents();
 
         LOGGER.info("QuarkMod Dream Dimension init success");
