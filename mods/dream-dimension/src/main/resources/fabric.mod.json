@@ -22,6 +22,9 @@
 			"com.strangequark.dreamdimension.client.DreamDimensionClient"
 		]
 	},
+	"mixins": [
+		"quarkmod_dream_dimension.mixins.json"
+	],
 	"depends": {
 		"fabricloader": ">=0.16.14",
 		"minecraft": "~1.21.8",
