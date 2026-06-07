@@ -7,8 +7,8 @@
       "biomes": [
         {
           "parameters": {
-            "temperature": -1.0,
-            "humidity": -1.0,
+            "temperature": -0.7,
+            "humidity": -0.7,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -19,8 +19,8 @@
         },
         {
           "parameters": {
-            "temperature": -1.0,
-            "humidity": -0.78,
+            "temperature": -0.7,
+            "humidity": -0.55,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -31,8 +31,8 @@
         },
         {
           "parameters": {
-            "temperature": -1.0,
-            "humidity": -0.56,
+            "temperature": -0.7,
+            "humidity": -0.39,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -43,8 +43,8 @@
         },
         {
           "parameters": {
-            "temperature": -1.0,
-            "humidity": -0.33,
+            "temperature": -0.7,
+            "humidity": -0.23,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -55,8 +55,8 @@
         },
         {
           "parameters": {
-            "temperature": -1.0,
-            "humidity": -0.11,
+            "temperature": -0.7,
+            "humidity": -0.08,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -67,8 +67,8 @@
         },
         {
           "parameters": {
-            "temperature": -1.0,
-            "humidity": 0.11,
+            "temperature": -0.7,
+            "humidity": 0.08,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -79,8 +79,8 @@
         },
         {
           "parameters": {
-            "temperature": -1.0,
-            "humidity": 0.33,
+            "temperature": -0.7,
+            "humidity": 0.23,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -91,8 +91,8 @@
         },
         {
           "parameters": {
-            "temperature": -1.0,
-            "humidity": 0.56,
+            "temperature": -0.7,
+            "humidity": 0.39,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -103,8 +103,8 @@
         },
         {
           "parameters": {
-            "temperature": -1.0,
-            "humidity": 0.78,
+            "temperature": -0.7,
+            "humidity": 0.55,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -115,8 +115,8 @@
         },
         {
           "parameters": {
-            "temperature": -1.0,
-            "humidity": 1.0,
+            "temperature": -0.7,
+            "humidity": 0.7,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -127,8 +127,8 @@
         },
         {
           "parameters": {
-            "temperature": -0.6,
-            "humidity": -1.0,
+            "temperature": -0.42,
+            "humidity": -0.7,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -139,8 +139,8 @@
         },
         {
           "parameters": {
-            "temperature": -0.6,
-            "humidity": -0.78,
+            "temperature": -0.42,
+            "humidity": -0.55,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -151,8 +151,8 @@
         },
         {
           "parameters": {
-            "temperature": -0.6,
-            "humidity": -0.56,
+            "temperature": -0.42,
+            "humidity": -0.39,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -163,8 +163,8 @@
         },
         {
           "parameters": {
-            "temperature": -0.6,
-            "humidity": -0.33,
+            "temperature": -0.42,
+            "humidity": -0.23,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -175,8 +175,8 @@
         },
         {
           "parameters": {
-            "temperature": -0.6,
-            "humidity": -0.11,
+            "temperature": -0.42,
+            "humidity": -0.08,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -187,8 +187,8 @@
         },
         {
           "parameters": {
-            "temperature": -0.6,
-            "humidity": 0.11,
+            "temperature": -0.42,
+            "humidity": 0.08,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -199,8 +199,8 @@
         },
         {
           "parameters": {
-            "temperature": -0.6,
-            "humidity": 0.33,
+            "temperature": -0.42,
+            "humidity": 0.23,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -211,8 +211,8 @@
         },
         {
           "parameters": {
-            "temperature": -0.6,
-            "humidity": 0.56,
+            "temperature": -0.42,
+            "humidity": 0.39,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -223,8 +223,8 @@
         },
         {
           "parameters": {
-            "temperature": -0.6,
-            "humidity": 0.78,
+            "temperature": -0.42,
+            "humidity": 0.55,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -235,8 +235,8 @@
         },
         {
           "parameters": {
-            "temperature": -0.6,
-            "humidity": 1.0,
+            "temperature": -0.42,
+            "humidity": 0.7,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -247,8 +247,8 @@
         },
         {
           "parameters": {
-            "temperature": -0.2,
-            "humidity": -1.0,
+            "temperature": -0.14,
+            "humidity": -0.7,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -259,8 +259,8 @@
         },
         {
           "parameters": {
-            "temperature": -0.2,
-            "humidity": -0.78,
+            "temperature": -0.14,
+            "humidity": -0.55,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -271,8 +271,8 @@
         },
         {
           "parameters": {
-            "temperature": -0.2,
-            "humidity": -0.56,
+            "temperature": -0.14,
+            "humidity": -0.39,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -283,8 +283,8 @@
         },
         {
           "parameters": {
-            "temperature": -0.2,
-            "humidity": -0.33,
+            "temperature": -0.14,
+            "humidity": -0.23,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -295,8 +295,8 @@
         },
         {
           "parameters": {
-            "temperature": -0.2,
-            "humidity": -0.11,
+            "temperature": -0.14,
+            "humidity": -0.08,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -307,8 +307,8 @@
         },
         {
           "parameters": {
-            "temperature": -0.2,
-            "humidity": 0.11,
+            "temperature": -0.14,
+            "humidity": 0.08,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -319,8 +319,8 @@
         },
         {
           "parameters": {
-            "temperature": -0.2,
-            "humidity": 0.33,
+            "temperature": -0.14,
+            "humidity": 0.23,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -331,8 +331,8 @@
         },
         {
           "parameters": {
-            "temperature": -0.2,
-            "humidity": 0.56,
+            "temperature": -0.14,
+            "humidity": 0.39,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -343,8 +343,8 @@
         },
         {
           "parameters": {
-            "temperature": -0.2,
-            "humidity": 0.78,
+            "temperature": -0.14,
+            "humidity": 0.55,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -355,8 +355,8 @@
         },
         {
           "parameters": {
-            "temperature": -0.2,
-            "humidity": 1.0,
+            "temperature": -0.14,
+            "humidity": 0.7,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -367,8 +367,8 @@
         },
         {
           "parameters": {
-            "temperature": 0.2,
-            "humidity": -1.0,
+            "temperature": 0.14,
+            "humidity": -0.7,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -379,8 +379,8 @@
         },
         {
           "parameters": {
-            "temperature": 0.2,
-            "humidity": -0.78,
+            "temperature": 0.14,
+            "humidity": -0.55,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -391,8 +391,8 @@
         },
         {
           "parameters": {
-            "temperature": 0.2,
-            "humidity": -0.56,
+            "temperature": 0.14,
+            "humidity": -0.39,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -403,8 +403,8 @@
         },
         {
           "parameters": {
-            "temperature": 0.2,
-            "humidity": -0.33,
+            "temperature": 0.14,
+            "humidity": -0.23,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -415,8 +415,8 @@
         },
         {
           "parameters": {
-            "temperature": 0.2,
-            "humidity": -0.11,
+            "temperature": 0.14,
+            "humidity": -0.08,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -427,8 +427,8 @@
         },
         {
           "parameters": {
-            "temperature": 0.2,
-            "humidity": 0.11,
+            "temperature": 0.14,
+            "humidity": 0.08,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -439,8 +439,8 @@
         },
         {
           "parameters": {
-            "temperature": 0.2,
-            "humidity": 0.33,
+            "temperature": 0.14,
+            "humidity": 0.23,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -451,8 +451,8 @@
         },
         {
           "parameters": {
-            "temperature": 0.2,
-            "humidity": 0.56,
+            "temperature": 0.14,
+            "humidity": 0.39,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -463,8 +463,8 @@
         },
         {
           "parameters": {
-            "temperature": 0.2,
-            "humidity": 0.78,
+            "temperature": 0.14,
+            "humidity": 0.55,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -475,8 +475,8 @@
         },
         {
           "parameters": {
-            "temperature": 0.2,
-            "humidity": 1.0,
+            "temperature": 0.14,
+            "humidity": 0.7,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -487,8 +487,8 @@
         },
         {
           "parameters": {
-            "temperature": 0.6,
-            "humidity": -1.0,
+            "temperature": 0.42,
+            "humidity": -0.7,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -499,8 +499,8 @@
         },
         {
           "parameters": {
-            "temperature": 0.6,
-            "humidity": -0.78,
+            "temperature": 0.42,
+            "humidity": -0.55,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -511,8 +511,8 @@
         },
         {
           "parameters": {
-            "temperature": 0.6,
-            "humidity": -0.56,
+            "temperature": 0.42,
+            "humidity": -0.39,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -523,8 +523,8 @@
         },
         {
           "parameters": {
-            "temperature": 0.6,
-            "humidity": -0.33,
+            "temperature": 0.42,
+            "humidity": -0.23,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -535,8 +535,8 @@
         },
         {
           "parameters": {
-            "temperature": 0.6,
-            "humidity": -0.11,
+            "temperature": 0.42,
+            "humidity": -0.08,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -547,8 +547,8 @@
         },
         {
           "parameters": {
-            "temperature": 0.6,
-            "humidity": 0.11,
+            "temperature": 0.42,
+            "humidity": 0.08,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -559,8 +559,8 @@
         },
         {
           "parameters": {
-            "temperature": 0.6,
-            "humidity": 0.33,
+            "temperature": 0.42,
+            "humidity": 0.23,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -571,8 +571,8 @@
         },
         {
           "parameters": {
-            "temperature": 0.6,
-            "humidity": 0.56,
+            "temperature": 0.42,
+            "humidity": 0.39,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -583,8 +583,8 @@
         },
         {
           "parameters": {
-            "temperature": 0.6,
-            "humidity": 0.78,
+            "temperature": 0.42,
+            "humidity": 0.55,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -595,8 +595,8 @@
         },
         {
           "parameters": {
-            "temperature": 0.6,
-            "humidity": 1.0,
+            "temperature": 0.42,
+            "humidity": 0.7,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -607,8 +607,8 @@
         },
         {
           "parameters": {
-            "temperature": 1.0,
-            "humidity": -1.0,
+            "temperature": 0.7,
+            "humidity": -0.7,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -619,8 +619,8 @@
         },
         {
           "parameters": {
-            "temperature": 1.0,
-            "humidity": -0.78,
+            "temperature": 0.7,
+            "humidity": -0.55,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -631,8 +631,8 @@
         },
         {
           "parameters": {
-            "temperature": 1.0,
-            "humidity": -0.56,
+            "temperature": 0.7,
+            "humidity": -0.39,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -643,8 +643,8 @@
         },
         {
           "parameters": {
-            "temperature": 1.0,
-            "humidity": -0.33,
+            "temperature": 0.7,
+            "humidity": -0.23,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -655,8 +655,8 @@
         },
         {
           "parameters": {
-            "temperature": 1.0,
-            "humidity": -0.11,
+            "temperature": 0.7,
+            "humidity": -0.08,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -667,8 +667,8 @@
         },
         {
           "parameters": {
-            "temperature": 1.0,
-            "humidity": 0.11,
+            "temperature": 0.7,
+            "humidity": 0.08,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -679,8 +679,8 @@
         },
         {
           "parameters": {
-            "temperature": 1.0,
-            "humidity": 0.33,
+            "temperature": 0.7,
+            "humidity": 0.23,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -691,8 +691,8 @@
         },
         {
           "parameters": {
-            "temperature": 1.0,
-            "humidity": 0.56,
+            "temperature": 0.7,
+            "humidity": 0.39,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -703,8 +703,8 @@
         },
         {
           "parameters": {
-            "temperature": 1.0,
-            "humidity": 0.78,
+            "temperature": 0.7,
+            "humidity": 0.55,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
@@ -715,8 +715,8 @@
         },
         {
           "parameters": {
-            "temperature": 1.0,
-            "humidity": 1.0,
+            "temperature": 0.7,
+            "humidity": 0.7,
             "continentalness": 0.0,
             "erosion": 0.0,
             "depth": 0.0,
