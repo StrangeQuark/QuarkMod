@@ -1,12 +1,16 @@
 package com.strangequark.dreamdimension;
 
 import com.strangequark.dreamdimension.block.ModBlocks;
+import com.strangequark.dreamdimension.ethereal.EtherealEvents;
 import com.strangequark.dreamdimension.effect.ModStatusEffects;
+import com.strangequark.dreamdimension.item.ModItems;
+import com.strangequark.dreamdimension.loot.DreamLootTables;
 import com.strangequark.dreamdimension.network.DreamTransitionPayload;
 import com.strangequark.dreamdimension.potion.ModPotions;
 import com.strangequark.dreamdimension.state.ModAttachments;
 import com.strangequark.dreamdimension.village.DreamVillagers;
 import com.strangequark.dreamdimension.world.DreamDimensionEvents;
+import com.strangequark.dreamdimension.world.DreamWorldgen;
 import com.strangequark.dreamdimension.world.structure.ModStructureTypes;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
@@ -29,10 +33,14 @@ public class DreamDimensionMod implements ModInitializer {
         ModAttachments.registerAttachments();
         ModStructureTypes.registerStructureTypes();
         ModBlocks.registerModBlocks();
+        ModItems.registerModItems();
         ModStatusEffects.registerStatusEffects();
         ModPotions.registerPotions();
         ModPotions.registerBrewingRecipes();
+        DreamWorldgen.register();
         DreamVillagers.register();
+        DreamLootTables.register();
+        EtherealEvents.register();
         DreamDimensionEvents.registerEvents();
 
         LOGGER.info("QuarkMod Dream Dimension init success");

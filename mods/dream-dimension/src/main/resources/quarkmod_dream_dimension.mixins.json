@@ -4,9 +4,13 @@
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
 		"BrewingRecipeRegistryMixin",
+		"LivingEntityEtherealDamageMixin",
+		"LivingEntityEtherealVariantMixin",
 		"TippedArrowRecipeMixin"
 	],
 	"client": [
+		"client.LivingEntityRendererEtherealMixin",
+		"client.LivingEntityRenderStateEtherealMixin",
 		"client.SkyRenderingMixin"
 	],
 	"injectors": {
