@@ -1,0 +1,14 @@
+{
+  "layers": {
+    "humanoid": [
+      {
+        "texture": "quarkmod:ethereal"
+      }
+    ],
+    "humanoid_leggings": [
+      {
+        "texture": "quarkmod:ethereal"
+      }
+    ]
+  }
+}

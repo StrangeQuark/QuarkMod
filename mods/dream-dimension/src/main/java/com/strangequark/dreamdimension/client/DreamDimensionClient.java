@@ -1,14 +1,17 @@
 package com.strangequark.dreamdimension.client;
 
 import com.strangequark.dreamdimension.DreamDimensionMod;
+import com.strangequark.dreamdimension.block.ModBlocks;
 import com.strangequark.dreamdimension.network.DreamTransitionPayload;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.client.rendering.v1.BlockRenderLayerMap;
 import net.fabricmc.fabric.api.client.rendering.v1.DimensionRenderingRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.VanillaHudElements;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.BlockRenderLayer;
 import net.minecraft.client.render.DimensionEffects;
 import net.minecraft.client.render.RenderTickCounter;
 import net.minecraft.util.math.MathHelper;
@@ -18,6 +21,12 @@ public class DreamDimensionClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         DimensionRenderingRegistry.registerDimensionEffects(DreamDimensionMod.id("dream"), new DreamEffects());
+        BlockRenderLayerMap.putBlocks(
+                BlockRenderLayer.TRANSLUCENT,
+                ModBlocks.ETHEREAL_ORE,
+                ModBlocks.ETHEREAL_LOG,
+                ModBlocks.ETHEREAL_LEAVES
+        );
         ClientPlayNetworking.registerGlobalReceiver(
                 DreamTransitionPayload.ID,
                 (payload, context) -> DreamTransitionOverlay.start(payload.durationTicks())

@@ -2,6 +2,7 @@ package com.strangequark.dreamdimension.village;
 
 import com.google.common.collect.ImmutableSet;
 import com.strangequark.dreamdimension.DreamDimensionMod;
+import com.strangequark.dreamdimension.item.ModItems;
 import com.strangequark.dreamdimension.potion.ModPotions;
 import com.strangequark.dreamdimension.world.DreamDimensionEvents;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
@@ -169,7 +170,9 @@ public final class DreamVillagers {
         trades(MENDER_OF_WAKING, 1,
                 buy(Items.IRON_INGOT, 6, 1, 48, 3),
                 buy(Items.GOLD_INGOT, 4, 1, 48, 3),
-                sell(Items.GRINDSTONE, 1, 6, 16, 5));
+                sell(Items.GRINDSTONE, 1, 6, 16, 5),
+                sellFixed(ModItems.ETHEREAL_PICKAXE, 1, 16, 2),
+                sellFixed(ModItems.ETHEREAL_AXE, 1, 16, 2));
         trades(MENDER_OF_WAKING, 2,
                 sell(Items.GOLDEN_APPLE, 1, 12, 12, 10),
                 sellPotion(Potions.HEALING, 9, 20, 8),
@@ -300,6 +303,10 @@ public final class DreamVillagers {
         return sell(new ItemStack(item, count), emeralds, maxUses, experience);
     }
 
+    private static TradeOffers.Factory sellFixed(ItemConvertible item, int emeralds, int maxUses, int experience) {
+        return sellFixed(new ItemStack(item), emeralds, maxUses, experience);
+    }
+
     private static TradeOffers.Factory sellPotion(RegistryEntry<net.minecraft.potion.Potion> potion, int emeralds, int maxUses, int experience) {
         return sell(ModPotions.createStack(Items.POTION, potion), emeralds, maxUses, experience);
     }
@@ -312,5 +319,63 @@ public final class DreamVillagers {
                 experience,
                 PRICE_MULTIPLIER
         );
+    }
+
+    private static TradeOffers.Factory sellFixed(ItemStack result, int emeralds, int maxUses, int experience) {
+        return (entity, random) -> new FixedPriceTradeOffer(result.copy(), emeralds, maxUses, experience);
+    }
+
+    private static final class FixedPriceTradeOffer extends TradeOffer {
+        private final TradedItem fixedBuyItem;
+
+        private FixedPriceTradeOffer(ItemStack result, int emeralds, int maxUses, int experience) {
+            super(new TradedItem(Items.EMERALD, emeralds), result, maxUses, experience, 0.0F);
+            this.fixedBuyItem = new TradedItem(Items.EMERALD, emeralds);
+        }
+
+        @Override
+        public ItemStack getDisplayedFirstBuyItem() {
+            return fixedBuyItem.itemStack();
+        }
+
+        @Override
+        public boolean matchesBuyItems(ItemStack firstBuyStack, ItemStack secondBuyStack) {
+            return fixedBuyItem.matches(firstBuyStack)
+                    && firstBuyStack.getCount() >= fixedBuyItem.count()
+                    && secondBuyStack.isEmpty();
+        }
+
+        @Override
+        public boolean depleteBuyItems(ItemStack firstBuyStack, ItemStack secondBuyStack) {
+            if (!matchesBuyItems(firstBuyStack, secondBuyStack)) {
+                return false;
+            }
+
+            firstBuyStack.decrement(fixedBuyItem.count());
+            return true;
+        }
+
+        @Override
+        public void increaseSpecialPrice(int increment) {
+        }
+
+        @Override
+        public void setSpecialPrice(int specialPrice) {
+            super.setSpecialPrice(0);
+        }
+
+        @Override
+        public TradeOffer copy() {
+            FixedPriceTradeOffer copy = new FixedPriceTradeOffer(
+                    copySellItem(),
+                    fixedBuyItem.count(),
+                    getMaxUses(),
+                    getMerchantExperience()
+            );
+            for (int i = 0; i < getUses(); i++) {
+                copy.use();
+            }
+            return copy;
+        }
     }
 }
