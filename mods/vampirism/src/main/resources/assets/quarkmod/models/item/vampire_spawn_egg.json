@@ -1,6 +1,6 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "minecraft:item/zombie_spawn_egg"
+    "layer0": "quarkmod:item/vampire_spawn_egg"
   }
 }

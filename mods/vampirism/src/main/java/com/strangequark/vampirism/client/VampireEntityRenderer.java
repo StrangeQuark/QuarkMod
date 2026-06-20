@@ -1,32 +1,39 @@
 package com.strangequark.vampirism.client;
 
 import com.strangequark.vampirism.entity.VampireEntity;
+import net.minecraft.client.render.entity.BipedEntityRenderer;
 import net.minecraft.client.render.entity.EntityRendererFactory;
-import net.minecraft.client.render.entity.ZombieBaseEntityRenderer;
-import net.minecraft.client.render.entity.model.EntityModelLayer;
 import net.minecraft.client.render.entity.model.EntityModelLayers;
-import net.minecraft.client.render.entity.model.ZombieEntityModel;
-import net.minecraft.client.render.entity.state.ZombieEntityRenderState;
+import net.minecraft.client.render.entity.model.PlayerEntityModel;
+import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
+import net.minecraft.client.util.SkinTextures;
+import net.minecraft.util.Identifier;
 
-public class VampireEntityRenderer extends ZombieBaseEntityRenderer<VampireEntity, ZombieEntityRenderState, ZombieEntityModel<ZombieEntityRenderState>> {
+public class VampireEntityRenderer extends BipedEntityRenderer<VampireEntity, PlayerEntityRenderState, PlayerEntityModel> {
     public VampireEntityRenderer(EntityRendererFactory.Context context) {
-        super(
-                context,
-                model(context, EntityModelLayers.ZOMBIE),
-                model(context, EntityModelLayers.ZOMBIE_BABY),
-                model(context, EntityModelLayers.ZOMBIE_INNER_ARMOR),
-                model(context, EntityModelLayers.ZOMBIE_OUTER_ARMOR),
-                model(context, EntityModelLayers.ZOMBIE_BABY_INNER_ARMOR),
-                model(context, EntityModelLayers.ZOMBIE_BABY_OUTER_ARMOR)
-        );
+        super(context, new PlayerEntityModel(context.getPart(EntityModelLayers.PLAYER), false), 0.5F);
     }
 
     @Override
-    public ZombieEntityRenderState createRenderState() {
-        return new ZombieEntityRenderState();
+    public PlayerEntityRenderState createRenderState() {
+        return new PlayerEntityRenderState();
     }
 
-    private static ZombieEntityModel<ZombieEntityRenderState> model(EntityRendererFactory.Context context, EntityModelLayer layer) {
-        return new ZombieEntityModel<>(context.getPart(layer));
+    @Override
+    public void updateRenderState(VampireEntity entity, PlayerEntityRenderState state, float tickDelta) {
+        super.updateRenderState(entity, state, tickDelta);
+        state.skinTextures = new SkinTextures(entity.getSkinTexture(), "", null, null, SkinTextures.Model.WIDE, true);
+        state.hatVisible = true;
+        state.jacketVisible = true;
+        state.leftPantsLegVisible = true;
+        state.rightPantsLegVisible = true;
+        state.leftSleeveVisible = true;
+        state.rightSleeveVisible = true;
+        state.capeVisible = false;
+    }
+
+    @Override
+    public Identifier getTexture(PlayerEntityRenderState state) {
+        return state.skinTextures == null ? VampireEntity.DEFAULT_SKIN : state.skinTextures.texture();
     }
 }
