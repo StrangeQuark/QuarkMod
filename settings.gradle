@@ -15,6 +15,7 @@ include 'grappling'
 include 'excavator'
 include 'loot-tweaks'
 include 'large-villages'
+include 'vampirism'
 include 'dream-dimension'
 include 'quarkmod'
 
@@ -22,5 +23,6 @@ project(':grappling').projectDir = file('mods/grappling')
 project(':excavator').projectDir = file('mods/excavator')
 project(':loot-tweaks').projectDir = file('mods/loot-tweaks')
 project(':large-villages').projectDir = file('mods/large-villages')
+project(':vampirism').projectDir = file('mods/vampirism')
 project(':dream-dimension').projectDir = file('mods/dream-dimension')
 project(':quarkmod').projectDir = file('mods/quarkmod')

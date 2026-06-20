@@ -7,6 +7,7 @@ def archivesByProject = [
 		'excavator'     : 'quarkmod-excavator',
 		'loot-tweaks'   : 'quarkmod-loot-tweaks',
 		'large-villages': 'quarkmod-large-villages',
+		'vampirism'     : 'quarkmod-vampirism',
 		'dream-dimension': 'quarkmod-dream-dimension',
 		'quarkmod'      : project.archives_base_name
 ]
@@ -16,6 +17,7 @@ def featureProjects = [
 		project(':excavator'),
 		project(':loot-tweaks'),
 		project(':large-villages'),
+		project(':vampirism'),
 		project(':dream-dimension')
 ]
 
@@ -104,6 +106,9 @@ project(':quarkmod') {
 			quarkmod_large_villages {
 				sourceSet 'main', project(':large-villages')
 			}
+			quarkmod_vampirism {
+				sourceSet 'main', project(':vampirism')
+      }
 			quarkmod_dream_dimension {
 				sourceSet 'main', project(':dream-dimension')
 			}
