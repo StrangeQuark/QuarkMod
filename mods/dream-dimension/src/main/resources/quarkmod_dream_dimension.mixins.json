@@ -1,0 +1,19 @@
+{
+	"required": true,
+	"package": "com.strangequark.dreamdimension.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"mixins": [
+		"BrewingRecipeRegistryMixin",
+		"LivingEntityEtherealDamageMixin",
+		"LivingEntityEtherealVariantMixin",
+		"TippedArrowRecipeMixin"
+	],
+	"client": [
+		"client.LivingEntityRendererEtherealMixin",
+		"client.LivingEntityRenderStateEtherealMixin",
+		"client.SkyRenderingMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

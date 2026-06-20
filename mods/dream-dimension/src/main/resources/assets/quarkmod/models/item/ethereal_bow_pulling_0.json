@@ -1,0 +1,6 @@
+{
+  "parent": "quarkmod:item/ethereal_bow",
+  "textures": {
+    "layer0": "quarkmod:item/ethereal_bow_pulling_0"
+  }
+}

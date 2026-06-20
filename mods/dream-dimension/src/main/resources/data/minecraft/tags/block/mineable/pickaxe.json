@@ -1,0 +1,13 @@
+{
+  "replace": false,
+  "values": [
+    "quarkmod:somnarium",
+    "quarkmod:lucid_charting_table",
+    "quarkmod:echo_lectern",
+    "quarkmod:stargazer_table",
+    "quarkmod:memory_loom",
+    "quarkmod:waking_anvil",
+    "quarkmod:drift_composter",
+    "quarkmod:ethereal_ore"
+  ]
+}

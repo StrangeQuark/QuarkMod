@@ -1,0 +1,34 @@
+{
+	"schemaVersion": 1,
+	"id": "quarkmod_dream_dimension",
+	"version": "${version}",
+	"name": "QuarkMod: Dream Dimension",
+	"description": "The QuarkMod Dream Dimension feature module.",
+	"authors": [
+		"StrangeQuark"
+	],
+	"contact": {
+		"homepage": "https://github.com/StrangeQuark/quarkmod",
+		"sources": "https://github.com/StrangeQuark/quarkmod"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/quarkmod/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"com.strangequark.dreamdimension.DreamDimensionMod"
+		],
+		"client": [
+			"com.strangequark.dreamdimension.client.DreamDimensionClient"
+		]
+	},
+	"mixins": [
+		"quarkmod_dream_dimension.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.16.14",
+		"minecraft": "~1.21.8",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}

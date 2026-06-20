@@ -1,0 +1,732 @@
+{
+  "type": "quarkmod:dream",
+  "generator": {
+    "type": "minecraft:noise",
+    "biome_source": {
+      "type": "minecraft:multi_noise",
+      "biomes": [
+        {
+          "parameters": {
+            "temperature": -0.7,
+            "humidity": -0.7,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/mushroom_fields"
+        },
+        {
+          "parameters": {
+            "temperature": -0.7,
+            "humidity": -0.55,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/deep_frozen_ocean"
+        },
+        {
+          "parameters": {
+            "temperature": -0.7,
+            "humidity": -0.39,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/frozen_ocean"
+        },
+        {
+          "parameters": {
+            "temperature": -0.7,
+            "humidity": -0.23,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/deep_cold_ocean"
+        },
+        {
+          "parameters": {
+            "temperature": -0.7,
+            "humidity": -0.08,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/cold_ocean"
+        },
+        {
+          "parameters": {
+            "temperature": -0.7,
+            "humidity": 0.08,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/deep_ocean"
+        },
+        {
+          "parameters": {
+            "temperature": -0.7,
+            "humidity": 0.23,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/ocean"
+        },
+        {
+          "parameters": {
+            "temperature": -0.7,
+            "humidity": 0.39,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/deep_lukewarm_ocean"
+        },
+        {
+          "parameters": {
+            "temperature": -0.7,
+            "humidity": 0.55,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/lukewarm_ocean"
+        },
+        {
+          "parameters": {
+            "temperature": -0.7,
+            "humidity": 0.7,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/warm_ocean"
+        },
+        {
+          "parameters": {
+            "temperature": -0.42,
+            "humidity": -0.7,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/stony_shore"
+        },
+        {
+          "parameters": {
+            "temperature": -0.42,
+            "humidity": -0.55,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/swamp"
+        },
+        {
+          "parameters": {
+            "temperature": -0.42,
+            "humidity": -0.39,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/mangrove_swamp"
+        },
+        {
+          "parameters": {
+            "temperature": -0.42,
+            "humidity": -0.23,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/snowy_slopes"
+        },
+        {
+          "parameters": {
+            "temperature": -0.42,
+            "humidity": -0.08,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/snowy_plains"
+        },
+        {
+          "parameters": {
+            "temperature": -0.42,
+            "humidity": 0.08,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/snowy_beach"
+        },
+        {
+          "parameters": {
+            "temperature": -0.42,
+            "humidity": 0.23,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/windswept_gravelly_hills"
+        },
+        {
+          "parameters": {
+            "temperature": -0.42,
+            "humidity": 0.39,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/grove"
+        },
+        {
+          "parameters": {
+            "temperature": -0.42,
+            "humidity": 0.55,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/windswept_hills"
+        },
+        {
+          "parameters": {
+            "temperature": -0.42,
+            "humidity": 0.7,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/snowy_taiga"
+        },
+        {
+          "parameters": {
+            "temperature": -0.14,
+            "humidity": -0.7,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/windswept_forest"
+        },
+        {
+          "parameters": {
+            "temperature": -0.14,
+            "humidity": -0.55,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/taiga"
+        },
+        {
+          "parameters": {
+            "temperature": -0.14,
+            "humidity": -0.39,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/plains"
+        },
+        {
+          "parameters": {
+            "temperature": -0.14,
+            "humidity": -0.23,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/meadow"
+        },
+        {
+          "parameters": {
+            "temperature": -0.14,
+            "humidity": -0.08,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/beach"
+        },
+        {
+          "parameters": {
+            "temperature": -0.14,
+            "humidity": 0.08,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/forest"
+        },
+        {
+          "parameters": {
+            "temperature": -0.14,
+            "humidity": 0.23,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/old_growth_spruce_taiga"
+        },
+        {
+          "parameters": {
+            "temperature": -0.14,
+            "humidity": 0.39,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/flower_forest"
+        },
+        {
+          "parameters": {
+            "temperature": -0.14,
+            "humidity": 0.55,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/birch_forest"
+        },
+        {
+          "parameters": {
+            "temperature": -0.14,
+            "humidity": 0.7,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/dark_forest"
+        },
+        {
+          "parameters": {
+            "temperature": 0.14,
+            "humidity": -0.7,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/pale_garden"
+        },
+        {
+          "parameters": {
+            "temperature": 0.14,
+            "humidity": -0.55,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/savanna_plateau"
+        },
+        {
+          "parameters": {
+            "temperature": 0.14,
+            "humidity": -0.39,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/savanna"
+        },
+        {
+          "parameters": {
+            "temperature": 0.14,
+            "humidity": -0.23,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/jungle"
+        },
+        {
+          "parameters": {
+            "temperature": 0.14,
+            "humidity": -0.08,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/badlands"
+        },
+        {
+          "parameters": {
+            "temperature": 0.14,
+            "humidity": 0.08,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/desert"
+        },
+        {
+          "parameters": {
+            "temperature": 0.14,
+            "humidity": 0.23,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/wooded_badlands"
+        },
+        {
+          "parameters": {
+            "temperature": 0.14,
+            "humidity": 0.39,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/jagged_peaks"
+        },
+        {
+          "parameters": {
+            "temperature": 0.14,
+            "humidity": 0.55,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/stony_peaks"
+        },
+        {
+          "parameters": {
+            "temperature": 0.14,
+            "humidity": 0.7,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/frozen_river"
+        },
+        {
+          "parameters": {
+            "temperature": 0.42,
+            "humidity": -0.7,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/river"
+        },
+        {
+          "parameters": {
+            "temperature": 0.42,
+            "humidity": -0.55,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/ice_spikes"
+        },
+        {
+          "parameters": {
+            "temperature": 0.42,
+            "humidity": -0.39,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/old_growth_pine_taiga"
+        },
+        {
+          "parameters": {
+            "temperature": 0.42,
+            "humidity": -0.23,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/sunflower_plains"
+        },
+        {
+          "parameters": {
+            "temperature": 0.42,
+            "humidity": -0.08,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/old_growth_birch_forest"
+        },
+        {
+          "parameters": {
+            "temperature": 0.42,
+            "humidity": 0.08,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/sparse_jungle"
+        },
+        {
+          "parameters": {
+            "temperature": 0.42,
+            "humidity": 0.23,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/bamboo_jungle"
+        },
+        {
+          "parameters": {
+            "temperature": 0.42,
+            "humidity": 0.39,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/eroded_badlands"
+        },
+        {
+          "parameters": {
+            "temperature": 0.42,
+            "humidity": 0.55,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/windswept_savanna"
+        },
+        {
+          "parameters": {
+            "temperature": 0.42,
+            "humidity": 0.7,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/cherry_grove"
+        },
+        {
+          "parameters": {
+            "temperature": 0.7,
+            "humidity": -0.7,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/frozen_peaks"
+        },
+        {
+          "parameters": {
+            "temperature": 0.7,
+            "humidity": -0.55,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/dripstone_caves"
+        },
+        {
+          "parameters": {
+            "temperature": 0.7,
+            "humidity": -0.39,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/lush_caves"
+        },
+        {
+          "parameters": {
+            "temperature": 0.7,
+            "humidity": -0.23,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/deep_dark"
+        },
+        {
+          "parameters": {
+            "temperature": 0.7,
+            "humidity": -0.08,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/nether_wastes"
+        },
+        {
+          "parameters": {
+            "temperature": 0.7,
+            "humidity": 0.08,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/soul_sand_valley"
+        },
+        {
+          "parameters": {
+            "temperature": 0.7,
+            "humidity": 0.23,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/crimson_forest"
+        },
+        {
+          "parameters": {
+            "temperature": 0.7,
+            "humidity": 0.39,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/warped_forest"
+        },
+        {
+          "parameters": {
+            "temperature": 0.7,
+            "humidity": 0.55,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/basalt_deltas"
+        },
+        {
+          "parameters": {
+            "temperature": 0.7,
+            "humidity": 0.7,
+            "continentalness": 0.0,
+            "erosion": 0.0,
+            "depth": 0.0,
+            "weirdness": 0.0,
+            "offset": 0.0
+          },
+          "biome": "quarkmod:dream/the_end"
+        }
+      ]
+    },
+    "settings": "quarkmod:dream_islands"
+  }
+}
