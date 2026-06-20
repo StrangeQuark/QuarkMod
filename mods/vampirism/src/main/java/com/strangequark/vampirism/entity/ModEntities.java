@@ -4,6 +4,8 @@ import com.strangequark.vampirism.VampirismMod;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnGroup;
+import net.minecraft.entity.attribute.DefaultAttributeContainer;
+import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.mob.ZombieEntity;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
@@ -12,13 +14,22 @@ import net.minecraft.registry.RegistryKeys;
 import net.minecraft.util.Identifier;
 
 public final class ModEntities {
+    private static final double VAMPIRE_MOVEMENT_SPEED = 0.45D;
+    private static final double VAMPIRE_ATTACK_DAMAGE = 9.0D;
+
     public static final EntityType<VampireEntity> VAMPIRE = registerVampire();
 
     private ModEntities() {
     }
 
     public static void registerModEntities() {
-        FabricDefaultAttributeRegistry.register(VAMPIRE, ZombieEntity.createZombieAttributes());
+        FabricDefaultAttributeRegistry.register(VAMPIRE, createVampireAttributes());
+    }
+
+    private static DefaultAttributeContainer.Builder createVampireAttributes() {
+        return ZombieEntity.createZombieAttributes()
+                .add(EntityAttributes.MOVEMENT_SPEED, VAMPIRE_MOVEMENT_SPEED)
+                .add(EntityAttributes.ATTACK_DAMAGE, VAMPIRE_ATTACK_DAMAGE);
     }
 
     private static EntityType<VampireEntity> registerVampire() {
