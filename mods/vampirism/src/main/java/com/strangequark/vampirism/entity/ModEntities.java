@@ -6,7 +6,7 @@ import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnGroup;
 import net.minecraft.entity.attribute.DefaultAttributeContainer;
 import net.minecraft.entity.attribute.EntityAttributes;
-import net.minecraft.entity.passive.BatEntity;
+import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.entity.mob.ZombieEntity;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.Registry;
@@ -15,6 +15,7 @@ import net.minecraft.registry.RegistryKeys;
 import net.minecraft.util.Identifier;
 
 public final class ModEntities {
+    private static final double VAMPIRE_MAX_HEALTH = 40.0D;
     private static final double VAMPIRE_MOVEMENT_SPEED = 0.45D;
     private static final double VAMPIRE_ATTACK_DAMAGE = 9.0D;
 
@@ -26,13 +27,19 @@ public final class ModEntities {
 
     public static void registerModEntities() {
         FabricDefaultAttributeRegistry.register(VAMPIRE, createVampireAttributes());
-        FabricDefaultAttributeRegistry.register(VAMPIRIC_BAT, BatEntity.createBatAttributes());
+        FabricDefaultAttributeRegistry.register(VAMPIRIC_BAT, createVampiricBatAttributes());
     }
 
     private static DefaultAttributeContainer.Builder createVampireAttributes() {
         return ZombieEntity.createZombieAttributes()
+                .add(EntityAttributes.MAX_HEALTH, VAMPIRE_MAX_HEALTH)
                 .add(EntityAttributes.MOVEMENT_SPEED, VAMPIRE_MOVEMENT_SPEED)
                 .add(EntityAttributes.ATTACK_DAMAGE, VAMPIRE_ATTACK_DAMAGE);
+    }
+
+    private static DefaultAttributeContainer.Builder createVampiricBatAttributes() {
+        return MobEntity.createMobAttributes()
+                .add(EntityAttributes.MAX_HEALTH, VAMPIRE_MAX_HEALTH);
     }
 
     private static EntityType<VampireEntity> registerVampire() {
@@ -52,8 +59,8 @@ public final class ModEntities {
         RegistryKey<EntityType<?>> key = RegistryKey.of(RegistryKeys.ENTITY_TYPE, id);
         EntityType<VampiricBatEntity> type = EntityType.Builder
                 .create(VampiricBatEntity::new, SpawnGroup.MONSTER)
-                .dimensions(1.0F, 1.0F)
-                .eyeHeight(0.5F)
+                .dimensions(0.75F, 0.75F)
+                .eyeHeight(0.375F)
                 .maxTrackingRange(8)
                 .build(key);
         return Registry.register(Registries.ENTITY_TYPE, key, type);
