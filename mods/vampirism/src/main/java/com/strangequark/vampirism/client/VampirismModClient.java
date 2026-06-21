@@ -8,5 +8,6 @@ public class VampirismModClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         EntityRendererRegistry.register(ModEntities.VAMPIRE, VampireEntityRenderer::new);
+        EntityRendererRegistry.register(ModEntities.VAMPIRIC_BAT, VampiricBatEntityRenderer::new);
     }
 }
