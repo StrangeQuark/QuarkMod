@@ -3,6 +3,7 @@ package com.strangequark.vampirism;
 import com.strangequark.vampirism.behavior.VampireBehavior;
 import com.strangequark.vampirism.entity.ModEntities;
 import com.strangequark.vampirism.item.ModItems;
+import com.strangequark.vampirism.vampire.PlayerBatForm;
 import com.strangequark.vampirism.vampire.VampireData;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.util.Identifier;
@@ -21,6 +22,7 @@ public class VampirismMod implements ModInitializer {
     @Override
     public void onInitialize() {
         VampireData.register();
+        PlayerBatForm.register();
         ModEntities.registerModEntities();
         ModItems.registerModItems();
         VampireBehavior.register();
