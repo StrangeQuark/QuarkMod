@@ -9,5 +9,6 @@ public class VampirismModClient implements ClientModInitializer {
     public void onInitializeClient() {
         EntityRendererRegistry.register(ModEntities.VAMPIRE, VampireEntityRenderer::new);
         EntityRendererRegistry.register(ModEntities.VAMPIRIC_BAT, VampiricBatEntityRenderer::new);
+        PlayerBatFormClient.register();
     }
 }

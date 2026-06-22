@@ -30,8 +30,10 @@ public class VampiricBatEntity extends BatEntity {
     private static final double PURSUE_RANGE = 32.0D;
     private static final double ATTACK_TRANSFORM_DISTANCE = 4.0D;
     private static final double PURSUE_PUSH = 0.12D;
-    private static final double MAX_HORIZONTAL_SPEED = 0.75D;
-    private static final double MAX_UPWARD_SPEED = 0.45D;
+    public static final double MOVEMENT_DAMPING = 0.85D;
+    public static final double MAX_HORIZONTAL_SPEED = 0.75D;
+    public static final double MAX_DOWNWARD_SPEED = 0.2D;
+    public static final double MAX_UPWARD_SPEED = 0.45D;
     private static final float ATTACK_HEALTH_FRACTION = 0.5F;
     private static final int PASSIVE_HEAL_INTERVAL_TICKS = 20;
     private static final float PASSIVE_HEAL_AMOUNT = 1.0F;
@@ -94,7 +96,7 @@ public class VampiricBatEntity extends BatEntity {
 
         away = new Vec3d(away.x, 0.0D, away.z).normalize();
         Vec3d velocity = this.getVelocity()
-                .multiply(0.85D)
+                .multiply(MOVEMENT_DAMPING)
                 .add(away.multiply(FLEE_PUSH))
                 .add(0.0D, FLEE_LIFT, 0.0D);
 
@@ -106,7 +108,7 @@ public class VampiricBatEntity extends BatEntity {
 
         this.setVelocity(
                 velocity.x,
-                MathHelper.clamp(velocity.y, -0.2D, MAX_UPWARD_SPEED),
+                MathHelper.clamp(velocity.y, -MAX_DOWNWARD_SPEED, MAX_UPWARD_SPEED),
                 velocity.z
         );
     }
@@ -161,7 +163,7 @@ public class VampiricBatEntity extends BatEntity {
 
         direction = direction.normalize();
         Vec3d velocity = this.getVelocity()
-                .multiply(0.85D)
+                .multiply(MOVEMENT_DAMPING)
                 .add(direction.multiply(PURSUE_PUSH));
 
         double horizontalSpeed = velocity.horizontalLength();
@@ -172,7 +174,7 @@ public class VampiricBatEntity extends BatEntity {
 
         this.setVelocity(
                 velocity.x,
-                MathHelper.clamp(velocity.y, -0.2D, MAX_UPWARD_SPEED),
+                MathHelper.clamp(velocity.y, -MAX_DOWNWARD_SPEED, MAX_UPWARD_SPEED),
                 velocity.z
         );
     }
