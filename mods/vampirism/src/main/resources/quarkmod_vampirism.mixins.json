@@ -9,6 +9,7 @@
 	"client": [
 		"client.HeldItemRendererBatFormMixin",
 		"client.InGameHudBatFormMixin",
+		"client.LightmapTextureManagerVampireVisionMixin",
 		"client.LivingEntityRendererBatFormMixin",
 		"client.PlayerEntityRendererBatFormStateMixin",
 		"client.PlayerEntityRenderStateBatFormMixin"
