@@ -1,6 +1,5 @@
 package com.strangequark.vampirism.item;
 
-import com.strangequark.vampirism.behavior.VampireBehavior;
 import com.strangequark.vampirism.vampire.VampireData;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.Item;
@@ -18,7 +17,6 @@ public class VampiricBloodItem extends Item {
         ItemStack result = super.finishUsing(stack, world, user);
         if (!world.isClient && user instanceof ServerPlayerEntity player) {
             VampireData.setVampire(player, true);
-            VampireBehavior.refreshNightVision(player);
         }
 
         return result;
