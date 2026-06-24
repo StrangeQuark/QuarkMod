@@ -1,8 +1,10 @@
 package com.strangequark.vampirism;
 
 import com.strangequark.vampirism.behavior.VampireBehavior;
+import com.strangequark.vampirism.block.ModBlocks;
 import com.strangequark.vampirism.entity.ModEntities;
 import com.strangequark.vampirism.item.ModItems;
+import com.strangequark.vampirism.vampire.CoffinSleepHandler;
 import com.strangequark.vampirism.vampire.PlayerBatForm;
 import com.strangequark.vampirism.vampire.VampireData;
 import net.fabricmc.api.ModInitializer;
@@ -22,8 +24,10 @@ public class VampirismMod implements ModInitializer {
     @Override
     public void onInitialize() {
         VampireData.register();
+        CoffinSleepHandler.register();
         PlayerBatForm.register();
         ModEntities.registerModEntities();
+        ModBlocks.registerModBlocks();
         ModItems.registerModItems();
         VampireBehavior.register();
 
