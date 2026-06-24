@@ -1,4 +1,8 @@
 {
+  "block.quarkmod.bed.vampire_forbidden": "Vampires cannot rest in beds",
+  "block.quarkmod.coffin": "Coffin",
+  "block.quarkmod.coffin.day_only": "Vampires can only rest in coffins during the day",
+  "block.quarkmod.coffin.not_vampire": "Only vampires can rest in coffins",
   "entity.quarkmod.vampire": "Vampire",
   "entity.quarkmod.vampiric_bat": "Vampiric Bat",
   "item.quarkmod.vampire_spawn_egg": "Vampire Spawn Egg",
