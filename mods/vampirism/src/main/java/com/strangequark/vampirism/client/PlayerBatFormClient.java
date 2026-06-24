@@ -8,6 +8,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.PlayerInput;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
@@ -21,6 +22,8 @@ public final class PlayerBatFormClient {
     private static final int NO_RECENT_JUMP_PRESS = -1_000_000;
     private static final Map<UUID, Boolean> LAST_BAT_FORM_BY_PLAYER = new HashMap<>();
     private static int lastJumpPressTick = NO_RECENT_JUMP_PRESS;
+    private static boolean wasJumpPressedLastTick;
+    private static boolean suppressJumpLiftUntilReleased;
 
     private PlayerBatFormClient() {
     }
@@ -32,6 +35,8 @@ public final class PlayerBatFormClient {
     private static void tick(MinecraftClient client) {
         if (client.player == null || client.world == null) {
             lastJumpPressTick = NO_RECENT_JUMP_PRESS;
+            wasJumpPressedLastTick = false;
+            suppressJumpLiftUntilReleased = false;
             LAST_BAT_FORM_BY_PLAYER.clear();
             return;
         }
@@ -46,25 +51,43 @@ public final class PlayerBatFormClient {
             boolean batForm = VampireData.isBatForm(player);
             Boolean lastBatForm = LAST_BAT_FORM_BY_PLAYER.put(player.getUuid(), batForm);
             if (lastBatForm == null || lastBatForm != batForm) {
+                if (lastBatForm != null && player == client.player) {
+                    clearUpwardVelocity(player);
+                }
                 player.calculateDimensions();
             }
         }
     }
 
     private static void handleJumpToggle(MinecraftClient client) {
-        while (client.options.jumpKey.wasPressed()) {
-            int tick = client.player.age;
-            if (!canRequestToggle(client)) {
-                lastJumpPressTick = NO_RECENT_JUMP_PRESS;
-                continue;
-            }
+        boolean jumpPressed = client.options.jumpKey.isPressed();
+        boolean jumpPressedThisTick = jumpPressed && !wasJumpPressedLastTick;
+        wasJumpPressedLastTick = jumpPressed;
+        if (!jumpPressed) {
+            suppressJumpLiftUntilReleased = false;
+        }
 
-            if (lastJumpPressTick != NO_RECENT_JUMP_PRESS && tick - lastJumpPressTick <= DOUBLE_JUMP_WINDOW_TICKS) {
-                ClientPlayNetworking.send(new ToggleBatFormPayload());
-                lastJumpPressTick = NO_RECENT_JUMP_PRESS;
-            } else {
-                lastJumpPressTick = tick;
-            }
+        if (!canRequestToggle(client)) {
+            lastJumpPressTick = NO_RECENT_JUMP_PRESS;
+            return;
+        }
+
+        int tick = client.player.age;
+        if (lastJumpPressTick != NO_RECENT_JUMP_PRESS && tick - lastJumpPressTick > DOUBLE_JUMP_WINDOW_TICKS) {
+            lastJumpPressTick = NO_RECENT_JUMP_PRESS;
+        }
+
+        if (!jumpPressedThisTick) {
+            return;
+        }
+
+        if (lastJumpPressTick != NO_RECENT_JUMP_PRESS) {
+            ClientPlayNetworking.send(new ToggleBatFormPayload());
+            clearUpwardVelocity(client.player);
+            suppressJumpLiftUntilReleased = true;
+            lastJumpPressTick = NO_RECENT_JUMP_PRESS;
+        } else {
+            lastJumpPressTick = tick;
         }
     }
 
@@ -96,7 +119,10 @@ public final class PlayerBatFormClient {
             velocity = velocity.add(direction.normalize().multiply(PlayerBatForm.FLIGHT_ACCELERATION));
         }
 
-        player.setVelocity(clampFlightVelocity(velocity));
+        double maxHorizontalSpeed = input.sprint()
+                ? PlayerBatForm.SPRINT_HORIZONTAL_SPEED
+                : PlayerBatForm.MAX_HORIZONTAL_SPEED;
+        player.setVelocity(clampFlightVelocity(velocity, maxHorizontalSpeed));
     }
 
     private static Vec3d getFlightDirection(ClientPlayerEntity player, PlayerInput input) {
@@ -117,7 +143,7 @@ public final class PlayerBatFormClient {
         if (input.right()) {
             direction = direction.add(right);
         }
-        if (input.jump()) {
+        if (input.jump() && !suppressJumpLiftUntilReleased) {
             direction = direction.add(0.0D, 1.0D, 0.0D);
         }
         if (input.sneak()) {
@@ -132,10 +158,10 @@ public final class PlayerBatFormClient {
         return new Vec3d(-MathHelper.sin(yaw), 0.0D, MathHelper.cos(yaw)).normalize();
     }
 
-    private static Vec3d clampFlightVelocity(Vec3d velocity) {
+    private static Vec3d clampFlightVelocity(Vec3d velocity, double maxHorizontalSpeed) {
         double horizontalSpeed = velocity.horizontalLength();
-        if (horizontalSpeed > PlayerBatForm.MAX_HORIZONTAL_SPEED) {
-            double scale = PlayerBatForm.MAX_HORIZONTAL_SPEED / horizontalSpeed;
+        if (horizontalSpeed > maxHorizontalSpeed) {
+            double scale = maxHorizontalSpeed / horizontalSpeed;
             velocity = new Vec3d(velocity.x * scale, velocity.y, velocity.z * scale);
         }
 
@@ -144,5 +170,13 @@ public final class PlayerBatFormClient {
                 MathHelper.clamp(velocity.y, -PlayerBatForm.MAX_DOWNWARD_SPEED, PlayerBatForm.MAX_UPWARD_SPEED),
                 velocity.z
         );
+    }
+
+    private static void clearUpwardVelocity(PlayerEntity player) {
+        Vec3d velocity = player.getVelocity();
+        if (velocity.y > 0.0D) {
+            player.setVelocity(velocity.x, 0.0D, velocity.z);
+        }
+        player.fallDistance = 0.0D;
     }
 }

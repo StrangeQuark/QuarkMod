@@ -1,7 +1,7 @@
 package com.strangequark.vampirism.vampire;
 
-import com.strangequark.vampirism.network.ToggleBatFormPayload;
 import com.strangequark.vampirism.entity.VampiricBatEntity;
+import com.strangequark.vampirism.network.ToggleBatFormPayload;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
@@ -16,6 +16,7 @@ import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.ActionResult;
+import net.minecraft.util.math.Vec3d;
 
 public final class PlayerBatForm {
     public static final float WIDTH = 0.75F;
@@ -23,10 +24,11 @@ public final class PlayerBatForm {
     public static final float EYE_HEIGHT = 0.375F;
     public static final EntityDimensions DIMENSIONS = EntityDimensions.changing(WIDTH, HEIGHT).withEyeHeight(EYE_HEIGHT);
     public static final double FLIGHT_DAMPING = VampiricBatEntity.MOVEMENT_DAMPING;
-    public static final double FLIGHT_ACCELERATION = 0.12D;
-    public static final double MAX_HORIZONTAL_SPEED = VampiricBatEntity.MAX_HORIZONTAL_SPEED;
-    public static final double MAX_DOWNWARD_SPEED = VampiricBatEntity.MAX_DOWNWARD_SPEED;
-    public static final double MAX_UPWARD_SPEED = VampiricBatEntity.MAX_UPWARD_SPEED;
+    public static final double FLIGHT_ACCELERATION = 0.045D;
+    public static final double MAX_HORIZONTAL_SPEED = 0.25D;
+    public static final double SPRINT_HORIZONTAL_SPEED = 0.28D;
+    public static final double MAX_DOWNWARD_SPEED = 0.18D;
+    public static final double MAX_UPWARD_SPEED = 0.18D;
 
     private PlayerBatForm() {
     }
@@ -72,6 +74,7 @@ public final class PlayerBatForm {
             VampireData.setBatForm(player, false);
         }
 
+        clearUpwardVelocity(player);
         applyServerState(player);
         player.calculateDimensions();
     }
@@ -131,5 +134,13 @@ public final class PlayerBatForm {
         UseEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> VampireData.isBatForm(player) ? ActionResult.FAIL : ActionResult.PASS);
         AttackBlockCallback.EVENT.register((player, world, hand, pos, direction) -> VampireData.isBatForm(player) ? ActionResult.FAIL : ActionResult.PASS);
         AttackEntityCallback.EVENT.register((player, world, hand, entity, hitResult) -> VampireData.isBatForm(player) ? ActionResult.FAIL : ActionResult.PASS);
+    }
+
+    private static void clearUpwardVelocity(ServerPlayerEntity player) {
+        Vec3d velocity = player.getVelocity();
+        if (velocity.y > 0.0D) {
+            player.setVelocity(velocity.x, 0.0D, velocity.z);
+        }
+        player.fallDistance = 0.0D;
     }
 }
