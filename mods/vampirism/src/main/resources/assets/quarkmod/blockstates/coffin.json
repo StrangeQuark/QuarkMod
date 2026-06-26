@@ -18,19 +18,19 @@
     },
     "facing=east,occupied=false,part=foot": {
       "model": "quarkmod:block/coffin_foot",
-      "y": 90
+      "y": 270
     },
     "facing=east,occupied=false,part=head": {
       "model": "quarkmod:block/coffin_head",
-      "y": 90
+      "y": 270
     },
     "facing=east,occupied=true,part=foot": {
       "model": "quarkmod:block/coffin_foot",
-      "y": 90
+      "y": 270
     },
     "facing=east,occupied=true,part=head": {
       "model": "quarkmod:block/coffin_head",
-      "y": 90
+      "y": 270
     },
     "facing=south,occupied=false,part=foot": {
       "model": "quarkmod:block/coffin_foot"
@@ -46,19 +46,19 @@
     },
     "facing=west,occupied=false,part=foot": {
       "model": "quarkmod:block/coffin_foot",
-      "y": 270
+      "y": 90
     },
     "facing=west,occupied=false,part=head": {
       "model": "quarkmod:block/coffin_head",
-      "y": 270
+      "y": 90
     },
     "facing=west,occupied=true,part=foot": {
       "model": "quarkmod:block/coffin_foot",
-      "y": 270
+      "y": 90
     },
     "facing=west,occupied=true,part=head": {
       "model": "quarkmod:block/coffin_head",
-      "y": 270
+      "y": 90
     }
   }
 }
