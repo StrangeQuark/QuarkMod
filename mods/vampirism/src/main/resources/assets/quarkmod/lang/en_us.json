@@ -1,10 +1,25 @@
 {
   "block.quarkmod.bed.vampire_forbidden": "Vampires cannot rest in beds",
-  "block.quarkmod.coffin": "Coffin",
   "block.quarkmod.coffin.day_only": "Vampires can only rest in coffins during the day",
   "block.quarkmod.coffin.not_vampire": "Only vampires can rest in coffins",
   "entity.quarkmod.vampire": "Vampire",
   "entity.quarkmod.vampiric_bat": "Vampiric Bat",
   "item.quarkmod.vampire_spawn_egg": "Vampire Spawn Egg",
-  "item.quarkmod.vampiric_blood": "Vampiric Blood"
+  "item.quarkmod.vampiric_blood": "Vampiric Blood",
+  "block.quarkmod.white_coffin": "White Coffin",
+  "block.quarkmod.orange_coffin": "Orange Coffin",
+  "block.quarkmod.magenta_coffin": "Magenta Coffin",
+  "block.quarkmod.light_blue_coffin": "Light Blue Coffin",
+  "block.quarkmod.yellow_coffin": "Yellow Coffin",
+  "block.quarkmod.lime_coffin": "Lime Coffin",
+  "block.quarkmod.pink_coffin": "Pink Coffin",
+  "block.quarkmod.gray_coffin": "Gray Coffin",
+  "block.quarkmod.light_gray_coffin": "Light Gray Coffin",
+  "block.quarkmod.cyan_coffin": "Cyan Coffin",
+  "block.quarkmod.purple_coffin": "Purple Coffin",
+  "block.quarkmod.blue_coffin": "Blue Coffin",
+  "block.quarkmod.brown_coffin": "Brown Coffin",
+  "block.quarkmod.green_coffin": "Green Coffin",
+  "block.quarkmod.red_coffin": "Red Coffin",
+  "block.quarkmod.black_coffin": "Black Coffin"
 }

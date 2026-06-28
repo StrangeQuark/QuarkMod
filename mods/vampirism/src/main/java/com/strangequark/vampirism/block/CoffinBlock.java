@@ -20,8 +20,8 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 
 public class CoffinBlock extends BedBlock {
-    public CoffinBlock(AbstractBlock.Settings settings) {
-        super(DyeColor.BLACK, settings);
+    public CoffinBlock(DyeColor color, AbstractBlock.Settings settings) {
+        super(color, settings);
     }
 
     @Override
