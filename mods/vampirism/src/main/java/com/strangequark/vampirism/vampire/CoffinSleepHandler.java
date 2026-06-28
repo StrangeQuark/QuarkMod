@@ -18,7 +18,7 @@ public final class CoffinSleepHandler {
     public static void register() {
         EntitySleepEvents.ALLOW_SLEEP_TIME.register((player, sleepingPos, vanillaResult) -> {
             if (player.getWorld() instanceof ServerWorld world
-                    && world.getBlockState(sleepingPos).isOf(ModBlocks.COFFIN)
+                    && ModBlocks.isCoffin(world.getBlockState(sleepingPos))
                     && VampireData.isVampire(player)
                     && isDaySleepTime(world)) {
                 return ActionResult.SUCCESS;
@@ -45,7 +45,7 @@ public final class CoffinSleepHandler {
     public static boolean isCoffinSleeper(PlayerEntity player) {
         return player.isSleeping()
                 && player.getSleepingPosition()
-                .map(pos -> player.getWorld().getBlockState(pos).isOf(ModBlocks.COFFIN))
+                .map(pos -> ModBlocks.isCoffin(player.getWorld().getBlockState(pos)))
                 .orElse(false);
     }
 

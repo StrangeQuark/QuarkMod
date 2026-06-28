@@ -1,6 +1,20 @@
 {
-  "replace": false,
   "values": [
-    "quarkmod:coffin"
+    "quarkmod:white_coffin",
+    "quarkmod:orange_coffin",
+    "quarkmod:magenta_coffin",
+    "quarkmod:light_blue_coffin",
+    "quarkmod:yellow_coffin",
+    "quarkmod:lime_coffin",
+    "quarkmod:pink_coffin",
+    "quarkmod:gray_coffin",
+    "quarkmod:light_gray_coffin",
+    "quarkmod:cyan_coffin",
+    "quarkmod:purple_coffin",
+    "quarkmod:blue_coffin",
+    "quarkmod:brown_coffin",
+    "quarkmod:green_coffin",
+    "quarkmod:red_coffin",
+    "quarkmod:black_coffin"
   ]
 }

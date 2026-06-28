@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "decorations",
+  "key": {
+    "P": "#minecraft:planks",
+    "W": "minecraft:black_wool"
+  },
+  "pattern": [
+    "PPP",
+    "PWP",
+    "PPP"
+  ],
+  "result": {
+    "count": 1,
+    "id": "quarkmod:black_coffin"
+  }
+}
