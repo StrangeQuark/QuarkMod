@@ -5,9 +5,11 @@
 	"mixins": [
 		"BedBlockVampireMixin",
 		"HostileTargetMixin",
+		"IronGolemEntityVampireTargetMixin",
 		"PlayerEntityCoffinSleepMixin",
 		"PlayerEntityBatFormDimensionsMixin",
-		"ServerWorldCoffinSleepMixin"
+		"ServerWorldCoffinSleepMixin",
+		"VillagerHostilesSensorVampireMixin"
 	],
 	"client": [
 		"client.HeldItemRendererBatFormMixin",
