@@ -21,6 +21,7 @@ import net.minecraft.entity.data.TrackedDataHandlerRegistry;
 import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.mob.ZombieEntity;
+import net.minecraft.entity.passive.VillagerEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.inventory.StackReference;
 import net.minecraft.item.ItemStack;
@@ -85,6 +86,16 @@ public class VampireEntity extends ZombieEntity {
     @Override
     protected boolean canConvertInWater() {
         return false;
+    }
+
+    @Override
+    public boolean canBreakDoors() {
+        return false;
+    }
+
+    @Override
+    public void setCanBreakDoors(boolean canBreakDoors) {
+        super.setCanBreakDoors(false);
     }
 
     @Override
@@ -181,6 +192,11 @@ public class VampireEntity extends ZombieEntity {
         }
 
         return ActionResult.SUCCESS_SERVER;
+    }
+
+    @Override
+    public boolean infectVillager(ServerWorld world, VillagerEntity villager) {
+        return false;
     }
 
     public boolean isConverting() {
