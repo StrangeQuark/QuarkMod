@@ -5,6 +5,7 @@ import com.strangequark.vampirism.block.ModBlocks;
 import com.strangequark.vampirism.entity.ModEntities;
 import com.strangequark.vampirism.item.ModItems;
 import com.strangequark.vampirism.vampire.CoffinSleepHandler;
+import com.strangequark.vampirism.vampire.BloodFeeding;
 import com.strangequark.vampirism.vampire.PlayerBatForm;
 import com.strangequark.vampirism.vampire.VampireData;
 import net.fabricmc.api.ModInitializer;
@@ -29,6 +30,7 @@ public class VampirismMod implements ModInitializer {
         ModEntities.registerModEntities();
         ModBlocks.registerModBlocks();
         ModItems.registerModItems();
+        BloodFeeding.register();
         VampireBehavior.register();
 
         LOGGER.info("QuarkMod Vampirism init success");

@@ -51,6 +51,9 @@ public final class VampireData {
 
     public static void setVampire(PlayerEntity player, boolean vampire) {
         ((AttachmentTarget) player).setAttached(VAMPIRE, vampire);
+        if (vampire) {
+            BloodThirst.initializeVampire(player);
+        }
     }
 
     public static boolean isBatForm(PlayerEntity player) {
