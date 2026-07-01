@@ -23,9 +23,12 @@ import java.util.Map;
 import java.util.UUID;
 
 public final class BloodFeeding {
-    private static final int MAX_FEED_TICKS = 40;
+    private static final int FEED_CHANNEL_TICKS = 60;
+    private static final int FEED_DRINK_INTERVAL_TICKS = 20;
+    private static final int SIPHON_POSE_TICKS = 12;
     private static final double MAX_FEED_DISTANCE_SQUARED = 9.0D;
     private static final Map<UUID, FeedingSession> FEEDING_SESSIONS = new HashMap<>();
+    private static final Map<UUID, Integer> SIPHON_POSES = new HashMap<>();
 
     private BloodFeeding() {
     }
@@ -53,7 +56,12 @@ public final class BloodFeeding {
         ItemStack stack = player.getStackInHand(hand);
         if (BloodSiphonItem.isSiphon(stack)) {
             if (world.isClient) {
-                return canSiphonTarget(player, target) ? ActionResult.SUCCESS : ActionResult.PASS;
+                if (canSiphonTarget(player, target)) {
+                    BloodDrainClientState.suppressNextSwing();
+                    return ActionResult.SUCCESS;
+                }
+
+                return ActionResult.PASS;
             }
 
             return player instanceof ServerPlayerEntity serverPlayer
@@ -63,6 +71,7 @@ public final class BloodFeeding {
 
         if (stack.isEmpty() && canDirectFeedTarget(player, target)) {
             if (world.isClient) {
+                BloodDrainClientState.suppressNextSwing();
                 return ActionResult.SUCCESS;
             }
 
@@ -80,17 +89,17 @@ public final class BloodFeeding {
     }
 
     private static void startFeeding(ServerPlayerEntity player, LivingEntity target) {
-        FEEDING_SESSIONS.put(player.getUuid(), new FeedingSession(target.getUuid(), MAX_FEED_TICKS));
-        player.getWorld().playSound(
-                null,
-                player.getX(),
-                player.getY(),
-                player.getZ(),
-                SoundEvents.ITEM_HONEY_BOTTLE_DRINK,
-                SoundCategory.PLAYERS,
-                0.55F,
-                0.75F
-        );
+        if (FEEDING_SESSIONS.containsKey(player.getUuid())) {
+            return;
+        }
+
+        FEEDING_SESSIONS.put(player.getUuid(), new FeedingSession(target.getUuid()));
+        VampireData.setDirectFeeding(player, true);
+    }
+
+    public static void startSiphonPose(ServerPlayerEntity player) {
+        SIPHON_POSES.put(player.getUuid(), SIPHON_POSE_TICKS);
+        VampireData.setSiphoningBlood(player, true);
     }
 
     private static void tickWorld(ServerWorld world) {
@@ -102,12 +111,35 @@ public final class BloodFeeding {
             FeedingSession session = FEEDING_SESSIONS.get(player.getUuid());
             if (session != null && !tickFeedingSession(world, player, session)) {
                 FEEDING_SESSIONS.remove(player.getUuid());
+                VampireData.setDirectFeeding(player, false);
+            } else if (session == null && VampireData.isDirectFeeding(player)) {
+                VampireData.setDirectFeeding(player, false);
             }
+
+            tickSiphonPose(player);
         }
     }
 
+    private static void tickSiphonPose(ServerPlayerEntity player) {
+        Integer ticksLeft = SIPHON_POSES.get(player.getUuid());
+        if (ticksLeft == null) {
+            if (VampireData.isSiphoningBlood(player)) {
+                VampireData.setSiphoningBlood(player, false);
+            }
+            return;
+        }
+
+        if (ticksLeft <= 1 || !player.isAlive() || player.isSpectator() || VampireData.isBatForm(player)) {
+            SIPHON_POSES.remove(player.getUuid());
+            VampireData.setSiphoningBlood(player, false);
+            return;
+        }
+
+        SIPHON_POSES.put(player.getUuid(), ticksLeft - 1);
+    }
+
     private static boolean tickFeedingSession(ServerWorld world, ServerPlayerEntity player, FeedingSession session) {
-        if (session.ticksLeft() <= 0 || !VampireData.isVampire(player) || !player.isAlive() || player.isSpectator()) {
+        if (session.isComplete() || !VampireData.isVampire(player) || !player.isAlive() || player.isSpectator()) {
             return false;
         }
 
@@ -120,13 +152,22 @@ public final class BloodFeeding {
             return false;
         }
 
+        if (session.shouldDrink() && !drinkFromTarget(world, player, target)) {
+            return false;
+        }
+
+        session.tick();
+        return !session.isComplete() && target.isAlive() && !BloodThirst.isFull(player);
+    }
+
+    private static boolean drinkFromTarget(ServerWorld world, ServerPlayerEntity player, LivingEntity target) {
         BloodType bloodType = BloodType.fromEntity(target);
         int targetWholeHealth = (int) target.getHealth();
         if (targetWholeHealth <= 0) {
             return false;
         }
 
-        int amount = Math.min(bloodType.directDrinkPerTick(), BloodThirst.MAX_BLOOD - player.getHungerManager().getFoodLevel());
+        int amount = Math.min(bloodType.directDrinkAmount(), BloodThirst.MAX_BLOOD - player.getHungerManager().getFoodLevel());
         amount = Math.min(amount, targetWholeHealth);
         if (amount <= 0) {
             return false;
@@ -143,26 +184,24 @@ public final class BloodFeeding {
 
         BloodThirst.addBlood(player, amount, bloodType.saturationModifier());
         BloodDrainReactions.reactToDrain(player, target);
-        session.decrementTicksLeft();
-        if (player.age % 5 == 0) {
-            world.playSound(
-                    null,
-                    player.getX(),
-                    player.getY(),
-                    player.getZ(),
-                    SoundEvents.ITEM_HONEY_BOTTLE_DRINK,
-                    SoundCategory.PLAYERS,
-                    0.35F,
-                    0.8F
-            );
-        }
+        world.playSound(
+                null,
+                player.getX(),
+                player.getY(),
+                player.getZ(),
+                SoundEvents.ITEM_HONEY_BOTTLE_DRINK,
+                SoundCategory.PLAYERS,
+                0.45F,
+                0.8F
+        );
 
-        return session.ticksLeft() > 0 && target.isAlive() && !BloodThirst.isFull(player);
+        return true;
     }
 
     private static boolean canDirectFeed(PlayerEntity player, LivingEntity target) {
         return player instanceof ServerPlayerEntity
                 && VampireData.isVampire(player)
+                && !VampireData.isBatForm(player)
                 && !player.isCreative()
                 && !player.isSpectator()
                 && player.isAlive()
@@ -171,18 +210,21 @@ public final class BloodFeeding {
 
     public static boolean canSiphon(PlayerEntity player, LivingEntity target) {
         return player instanceof ServerPlayerEntity
+                && !VampireData.isBatForm(player)
                 && !player.isSpectator()
                 && canSiphonTarget(player, target);
     }
 
     private static boolean canSiphonTarget(PlayerEntity player, LivingEntity target) {
         return !player.isSpectator()
+                && !VampireData.isBatForm(player)
                 && !(target instanceof PlayerEntity)
                 && canFeedFromTarget(player, target);
     }
 
     private static boolean canDirectFeedTarget(PlayerEntity player, LivingEntity target) {
         return VampireData.isVampire(player)
+                && !VampireData.isBatForm(player)
                 && !player.isCreative()
                 && !player.isSpectator()
                 && player.isAlive()
@@ -202,23 +244,26 @@ public final class BloodFeeding {
 
     private static final class FeedingSession {
         private final UUID targetUuid;
-        private int ticksLeft;
+        private int ticksElapsed;
 
-        private FeedingSession(UUID targetUuid, int ticksLeft) {
+        private FeedingSession(UUID targetUuid) {
             this.targetUuid = targetUuid;
-            this.ticksLeft = ticksLeft;
         }
 
         private UUID targetUuid() {
             return this.targetUuid;
         }
 
-        private int ticksLeft() {
-            return this.ticksLeft;
+        private boolean shouldDrink() {
+            return this.ticksElapsed % FEED_DRINK_INTERVAL_TICKS == 0;
         }
 
-        private void decrementTicksLeft() {
-            this.ticksLeft--;
+        private boolean isComplete() {
+            return this.ticksElapsed >= FEED_CHANNEL_TICKS;
+        }
+
+        private void tick() {
+            this.ticksElapsed++;
         }
     }
 }

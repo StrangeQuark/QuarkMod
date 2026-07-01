@@ -1,6 +1,7 @@
 package com.strangequark.vampirism.mixin.client;
 
 import com.strangequark.vampirism.client.BatFormPlayerRenderState;
+import com.strangequark.vampirism.client.FeedingPlayerRenderState;
 import com.strangequark.vampirism.vampire.PlayerBatForm;
 import com.strangequark.vampirism.vampire.VampireData;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
@@ -23,8 +24,11 @@ public abstract class PlayerEntityRendererBatFormStateMixin {
             CallbackInfo ci
     ) {
         BatFormPlayerRenderState batFormState = (BatFormPlayerRenderState) state;
+        FeedingPlayerRenderState feedingState = (FeedingPlayerRenderState) state;
         boolean batForm = VampireData.isBatForm(player);
         batFormState.quarkmod_vampirism$setBatForm(batForm);
+        feedingState.quarkmod_vampirism$setDirectFeeding(!batForm && VampireData.isDirectFeeding(player));
+        feedingState.quarkmod_vampirism$setSiphoningBlood(!batForm && VampireData.isSiphoningBlood(player));
 
         BatEntityRenderState batState = batFormState.quarkmod_vampirism$getBatRenderState();
         batState.age = state.age;
