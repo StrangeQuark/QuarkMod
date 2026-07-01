@@ -19,18 +19,18 @@ public enum BloodType {
     ILLAGER(2, 8, 0.8F),
     WITCH(2, 8, 0.8F);
 
-    private final int directDrinkPerTick;
+    private final int directDrinkAmount;
     private final int bottleThirst;
     private final float saturationModifier;
 
-    BloodType(int directDrinkPerTick, int bottleThirst, float saturationModifier) {
-        this.directDrinkPerTick = directDrinkPerTick;
+    BloodType(int directDrinkAmount, int bottleThirst, float saturationModifier) {
+        this.directDrinkAmount = directDrinkAmount;
         this.bottleThirst = bottleThirst;
         this.saturationModifier = saturationModifier;
     }
 
-    public int directDrinkPerTick() {
-        return this.directDrinkPerTick;
+    public int directDrinkAmount() {
+        return this.directDrinkAmount;
     }
 
     public int bottleThirst() {

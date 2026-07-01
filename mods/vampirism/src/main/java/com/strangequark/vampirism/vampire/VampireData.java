@@ -22,6 +22,16 @@ public final class VampireData {
             builder -> builder.initializer(() -> false)
                     .syncWith(PacketCodecs.BOOLEAN, AttachmentSyncPredicate.all())
     );
+    private static final AttachmentType<Boolean> DIRECT_FEEDING = AttachmentRegistry.create(
+            VampirismMod.id("direct_feeding"),
+            builder -> builder.initializer(() -> false)
+                    .syncWith(PacketCodecs.BOOLEAN, AttachmentSyncPredicate.all())
+    );
+    private static final AttachmentType<Boolean> SIPHONING_BLOOD = AttachmentRegistry.create(
+            VampirismMod.id("siphoning_blood"),
+            builder -> builder.initializer(() -> false)
+                    .syncWith(PacketCodecs.BOOLEAN, AttachmentSyncPredicate.all())
+    );
     private static final AttachmentType<Boolean> BAT_FORM_MANAGED = AttachmentRegistry.create(
             VampirismMod.id("bat_form_managed"),
             builder -> builder.initializer(() -> false)
@@ -53,6 +63,8 @@ public final class VampireData {
         ((AttachmentTarget) player).setAttached(VAMPIRE, vampire);
         if (vampire) {
             BloodThirst.initializeVampire(player);
+        } else {
+            setDirectFeeding(player, false);
         }
     }
 
@@ -62,6 +74,26 @@ public final class VampireData {
 
     public static void setBatForm(PlayerEntity player, boolean batForm) {
         ((AttachmentTarget) player).setAttached(BAT_FORM, batForm);
+        if (batForm) {
+            setDirectFeeding(player, false);
+            setSiphoningBlood(player, false);
+        }
+    }
+
+    public static boolean isDirectFeeding(PlayerEntity player) {
+        return Boolean.TRUE.equals(((AttachmentTarget) player).getAttachedOrElse(DIRECT_FEEDING, false));
+    }
+
+    public static void setDirectFeeding(PlayerEntity player, boolean directFeeding) {
+        ((AttachmentTarget) player).setAttached(DIRECT_FEEDING, directFeeding);
+    }
+
+    public static boolean isSiphoningBlood(PlayerEntity player) {
+        return Boolean.TRUE.equals(((AttachmentTarget) player).getAttachedOrElse(SIPHONING_BLOOD, false));
+    }
+
+    public static void setSiphoningBlood(PlayerEntity player, boolean siphoningBlood) {
+        ((AttachmentTarget) player).setAttached(SIPHONING_BLOOD, siphoningBlood);
     }
 
     public static boolean isBatFormManaged(PlayerEntity player) {

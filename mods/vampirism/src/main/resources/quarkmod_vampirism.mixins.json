@@ -13,6 +13,8 @@
 		"VillagerHostilesSensorVampireMixin"
 	],
 	"client": [
+		"client.BipedEntityModelFeedingPoseMixin",
+		"client.ClientPlayerEntityDrainSwingMixin",
 		"client.HeldItemRendererBatFormMixin",
 		"client.InGameHudBatFormMixin",
 		"client.LightmapTextureManagerVampireVisionMixin",

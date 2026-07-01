@@ -62,7 +62,7 @@ public class BloodSiphonItem extends Item {
 
         Hand bottleHand = findBottleHand(player);
         int bottleSlot = bottleHand == null ? findBottleSlot(player) : -1;
-        if (bottleHand == null && bottleSlot < 0 && !player.isCreative()) {
+        if (bottleHand == null && bottleSlot < 0) {
             return ActionResult.FAIL;
         }
 
@@ -73,13 +73,10 @@ public class BloodSiphonItem extends Item {
             return ActionResult.FAIL;
         }
         BloodDrainReactions.reactToDrain(player, target);
+        BloodFeeding.startSiphonPose(player);
 
         ItemStack bloodBottle = new ItemStack(ModItems.bloodBottleFor(bloodType));
-        if (player.isCreative()) {
-            if (!player.getInventory().contains(bloodBottle)) {
-                player.getInventory().insertStack(bloodBottle);
-            }
-        } else if (bottleHand != null) {
+        if (bottleHand != null) {
             replaceBottleInHand(player, bottleHand, bloodBottle);
         } else {
             ItemStack bottleStack = player.getInventory().getStack(bottleSlot);
