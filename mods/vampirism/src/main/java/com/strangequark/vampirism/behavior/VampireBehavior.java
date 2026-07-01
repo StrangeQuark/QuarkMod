@@ -1,6 +1,7 @@
 package com.strangequark.vampirism.behavior;
 
 import com.strangequark.vampirism.vampire.VampireData;
+import com.strangequark.vampirism.vampire.BloodDrainReactions;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.entity.mob.HostileEntity;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -52,7 +53,7 @@ public final class VampireBehavior {
         for (HostileEntity hostile : world.getEntitiesByClass(
                 HostileEntity.class,
                 player.getBoundingBox().expand(HOSTILE_PACIFY_RANGE),
-                hostile -> hostile.getTarget() == player
+                hostile -> hostile.getTarget() == player && !BloodDrainReactions.isRetaliatingAgainst(hostile, player)
         )) {
             hostile.setTarget(null);
         }
