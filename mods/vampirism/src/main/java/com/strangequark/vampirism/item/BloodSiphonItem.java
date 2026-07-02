@@ -1,5 +1,6 @@
 package com.strangequark.vampirism.item;
 
+import com.strangequark.vampirism.entity.VampireEntity;
 import com.strangequark.vampirism.vampire.BloodFeeding;
 import com.strangequark.vampirism.vampire.BloodDrainReactions;
 import com.strangequark.vampirism.vampire.BloodType;
@@ -20,6 +21,7 @@ import net.minecraft.util.Hand;
 public class BloodSiphonItem extends Item {
     private static final String SIPHON_KEY = "quarkmod:blood_siphon";
     private static final String SIPHON_VERSION_KEY = "quarkmod:siphon_version";
+    private static final int VAMPIRIC_BLOOD_SIPHON_DAMAGE = 8;
 
     public BloodSiphonItem(Settings settings) {
         super(settings);
@@ -55,8 +57,14 @@ public class BloodSiphonItem extends Item {
             return ActionResult.PASS;
         }
 
+        boolean isVampire = target instanceof VampireEntity;
         BloodType bloodType = BloodType.fromEntity(target);
-        if (bloodType == null || target.getHealth() < bloodType.bottleThirst()) {
+        if (!isVampire && bloodType == null) {
+            return ActionResult.FAIL;
+        }
+
+        int siphonDamage = isVampire ? VAMPIRIC_BLOOD_SIPHON_DAMAGE : bloodType.bottleThirst();
+        if (target.getHealth() < siphonDamage) {
             return ActionResult.FAIL;
         }
 
@@ -69,13 +77,13 @@ public class BloodSiphonItem extends Item {
         ServerWorld world = player.getWorld();
         target.timeUntilRegen = 0;
         target.hurtTime = 0;
-        if (!target.damage(world, world.getDamageSources().generic(), bloodType.bottleThirst())) {
+        if (!target.damage(world, world.getDamageSources().generic(), siphonDamage)) {
             return ActionResult.FAIL;
         }
         BloodDrainReactions.reactToDrain(player, target);
         BloodFeeding.startSiphonPose(player);
 
-        ItemStack bloodBottle = new ItemStack(ModItems.bloodBottleFor(bloodType));
+        ItemStack bloodBottle = new ItemStack(isVampire ? ModItems.VAMPIRIC_BLOOD : ModItems.bloodBottleFor(bloodType));
         if (bottleHand != null) {
             replaceBottleInHand(player, bottleHand, bloodBottle);
         } else {

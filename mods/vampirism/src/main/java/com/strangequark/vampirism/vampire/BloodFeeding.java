@@ -1,5 +1,6 @@
 package com.strangequark.vampirism.vampire;
 
+import com.strangequark.vampirism.entity.VampireEntity;
 import com.strangequark.vampirism.item.BloodSiphonItem;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.UseEntityCallback;
@@ -224,7 +225,7 @@ public final class BloodFeeding {
         return !player.isSpectator()
                 && !VampireData.isBatForm(player)
                 && !(target instanceof PlayerEntity)
-                && canFeedFromTarget(player, target);
+                && (canFeedFromTarget(player, target) || target instanceof VampireEntity);
     }
 
     private static boolean canDirectFeedTarget(PlayerEntity player, LivingEntity target) {
