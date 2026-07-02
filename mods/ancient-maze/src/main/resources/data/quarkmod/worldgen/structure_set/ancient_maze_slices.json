@@ -1,0 +1,17 @@
+{
+  "placement": {
+    "type": "minecraft:random_spread",
+    "frequency": 1.0,
+    "frequency_reduction_method": "default",
+    "salt": 90218414,
+    "separation": 0,
+    "spacing": 1,
+    "spread_type": "linear"
+  },
+  "structures": [
+    {
+      "structure": "quarkmod:ancient_maze_slices",
+      "weight": 1
+    }
+  ]
+}
