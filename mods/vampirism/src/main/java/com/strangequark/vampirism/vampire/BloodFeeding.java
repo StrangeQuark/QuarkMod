@@ -10,6 +10,7 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.passive.MerchantEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
@@ -41,11 +42,15 @@ public final class BloodFeeding {
 
     private static ActionResult preventVampireFoodUse(PlayerEntity player, World world, Hand hand) {
         ItemStack stack = player.getStackInHand(hand);
-        if (VampireData.isVampire(player) && stack.contains(DataComponentTypes.FOOD)) {
+        if (VampireData.isVampire(player) && isBlockedVampireFood(stack)) {
             return ActionResult.FAIL;
         }
 
         return ActionResult.PASS;
+    }
+
+    private static boolean isBlockedVampireFood(ItemStack stack) {
+        return stack.contains(DataComponentTypes.FOOD) && !stack.isOf(Items.GOLDEN_APPLE);
     }
 
     private static ActionResult handleEntityUse(PlayerEntity player, World world, Hand hand, Entity entity) {

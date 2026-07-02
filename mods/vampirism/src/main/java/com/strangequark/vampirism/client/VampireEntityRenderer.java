@@ -12,6 +12,7 @@ import net.minecraft.util.Identifier;
 public class VampireEntityRenderer extends BipedEntityRenderer<VampireEntity, PlayerEntityRenderState, PlayerEntityModel> {
     public VampireEntityRenderer(EntityRendererFactory.Context context) {
         super(context, new PlayerEntityModel(context.getPart(EntityModelLayers.PLAYER), false), 0.5F);
+        this.addFeature(new VampirePlayerEyesFeatureRenderer(this));
     }
 
     @Override
@@ -30,6 +31,7 @@ public class VampireEntityRenderer extends BipedEntityRenderer<VampireEntity, Pl
         state.leftSleeveVisible = true;
         state.rightSleeveVisible = true;
         state.capeVisible = false;
+        ((VampirePlayerRenderState) state).quarkmod_vampirism$setVampire(true);
     }
 
     @Override

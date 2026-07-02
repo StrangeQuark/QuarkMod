@@ -32,7 +32,13 @@ public abstract class HostileTargetMixin {
             EntityType.EVOKER,
             EntityType.ILLUSIONER,
             EntityType.RAVAGER,
-            EntityType.VEX
+            EntityType.VEX,
+            EntityType.ENDERMAN,
+            EntityType.PIGLIN,
+            EntityType.PIGLIN_BRUTE,
+            EntityType.ZOMBIFIED_PIGLIN,
+            EntityType.BLAZE,
+            EntityType.WITHER_SKELETON
     );
 
     @Inject(method = "setTarget", at = @At("HEAD"), cancellable = true)

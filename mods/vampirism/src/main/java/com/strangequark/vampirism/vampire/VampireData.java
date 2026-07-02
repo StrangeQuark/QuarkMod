@@ -15,7 +15,7 @@ public final class VampireData {
             builder -> builder.initializer(() -> false)
                     .persistent(Codec.BOOL)
                     .copyOnDeath()
-                    .syncWith(PacketCodecs.BOOLEAN, AttachmentSyncPredicate.targetOnly())
+                    .syncWith(PacketCodecs.BOOLEAN, AttachmentSyncPredicate.all())
     );
     private static final AttachmentType<Boolean> BAT_FORM = AttachmentRegistry.create(
             VampirismMod.id("bat_form"),
