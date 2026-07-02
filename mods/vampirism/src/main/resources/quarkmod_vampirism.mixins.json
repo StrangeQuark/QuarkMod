@@ -20,6 +20,7 @@
 		"client.LightmapTextureManagerVampireVisionMixin",
 		"client.LivingEntityRendererBatFormMixin",
 		"client.PlayerEntityRendererBatFormStateMixin",
+		"client.PlayerEntityRendererVampireEyesMixin",
 		"client.PlayerEntityRenderStateBatFormMixin"
 	],
 	"injectors": {

@@ -2,15 +2,19 @@ package com.strangequark.vampirism.mixin.client;
 
 import com.strangequark.vampirism.client.BatFormPlayerRenderState;
 import com.strangequark.vampirism.client.FeedingPlayerRenderState;
+import com.strangequark.vampirism.client.VampirePlayerRenderState;
 import net.minecraft.client.render.entity.state.BatEntityRenderState;
 import net.minecraft.client.render.entity.state.PlayerEntityRenderState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
 @Mixin(PlayerEntityRenderState.class)
-public abstract class PlayerEntityRenderStateBatFormMixin implements BatFormPlayerRenderState, FeedingPlayerRenderState {
+public abstract class PlayerEntityRenderStateBatFormMixin implements BatFormPlayerRenderState, FeedingPlayerRenderState, VampirePlayerRenderState {
     @Unique
     private boolean quarkmod_vampirism$batForm;
+
+    @Unique
+    private boolean quarkmod_vampirism$vampire;
 
     @Unique
     private boolean quarkmod_vampirism$directFeeding;
@@ -34,6 +38,16 @@ public abstract class PlayerEntityRenderStateBatFormMixin implements BatFormPlay
     @Override
     public BatEntityRenderState quarkmod_vampirism$getBatRenderState() {
         return this.quarkmod_vampirism$batRenderState;
+    }
+
+    @Override
+    public boolean quarkmod_vampirism$isVampire() {
+        return this.quarkmod_vampirism$vampire;
+    }
+
+    @Override
+    public void quarkmod_vampirism$setVampire(boolean vampire) {
+        this.quarkmod_vampirism$vampire = vampire;
     }
 
     @Override
