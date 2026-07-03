@@ -19,6 +19,9 @@
 			"com.strangequark.ancientmaze.AncientMazeMod"
 		]
 	},
+	"mixins": [
+		"quarkmod_ancient_maze.mixins.json"
+	],
 	"depends": {
 		"fabricloader": ">=0.16.14",
 		"minecraft": "~1.21.8",

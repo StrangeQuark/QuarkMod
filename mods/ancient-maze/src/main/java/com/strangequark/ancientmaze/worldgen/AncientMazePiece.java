@@ -9,11 +9,10 @@ import net.minecraft.block.Blocks;
 import net.minecraft.block.ChestBlock;
 import net.minecraft.block.HorizontalFacingBlock;
 import net.minecraft.block.LadderBlock;
-import net.minecraft.block.SignBlock;
+import net.minecraft.block.MultifaceBlock;
+import net.minecraft.block.SculkShriekerBlock;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.LootableContainerBlockEntity;
-import net.minecraft.block.entity.SignBlockEntity;
-import net.minecraft.block.entity.SignText;
 import net.minecraft.block.enums.BedPart;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnReason;
@@ -22,8 +21,6 @@ import net.minecraft.loot.LootTable;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
-import net.minecraft.storage.NbtReadView;
-import net.minecraft.storage.NbtWriteView;
 import net.minecraft.structure.StructureContext;
 import net.minecraft.structure.StructurePiece;
 import net.minecraft.util.math.BlockBox;
@@ -31,9 +28,6 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.random.Random;
-import net.minecraft.text.Text;
-import net.minecraft.util.DyeColor;
-import net.minecraft.util.ErrorReporter;
 import net.minecraft.world.StructureWorldAccess;
 import net.minecraft.world.gen.StructureAccessor;
 import net.minecraft.world.gen.chunk.ChunkGenerator;
@@ -51,6 +45,10 @@ public final class AncientMazePiece extends StructurePiece {
     private static final int APPROACH_HEADROOM = 4;
     private static final int BASEMENT_DEPTH = 5;
     private static final int PLAN_CACHE_LIMIT = 32;
+    private static final int BULK_GENERATION_FLAGS = Block.FORCE_STATE_AND_SKIP_CALLBACKS_AND_DROPS;
+    private static final int SCULK_FEATURE_FLAGS = Block.NOTIFY_LISTENERS | Block.FORCE_STATE;
+    private static final int SCULK_WALL_VEIN_CHANCE = 205;
+    private static final int SCULK_SHAFT_VEIN_CHANCE = 230;
     private static final Map<PlanKey, AncientMazePlan> PLAN_CACHE = new LinkedHashMap<>(PLAN_CACHE_LIMIT, 0.75F, true) {
         @Override
         protected boolean removeEldestEntry(Map.Entry<PlanKey, AncientMazePlan> eldest) {
@@ -201,18 +199,36 @@ public final class AncientMazePiece extends StructurePiece {
 
         BlockState bedrock = Blocks.BEDROCK.getDefaultState();
         BlockState air = Blocks.AIR.getDefaultState();
+        BlockState sculk = Blocks.SCULK.getDefaultState();
         BlockPos.Mutable pos = new BlockPos.Mutable();
         int ceilingY = floorY + wallHeight + 1;
+        int sculkY = floorY + AncientMazeStructure.SCULK_FLOOR_Y_OFFSET_FROM_FLOOR;
+        int featureY = floorY + AncientMazeStructure.WALKABLE_Y_OFFSET_FROM_FLOOR;
 
         for (int x = minX; x <= maxX; x++) {
             int localX = x - originX;
             for (int z = minZ; z <= maxZ; z++) {
                 int localZ = z - originZ;
                 boolean openColumn = isMazeOpenColumn(plan, localX, localZ, corridorWidth);
+                BlockState sculkFeature = openColumn ? sculkFeatureState(plan, localX, localZ) : null;
                 for (int y = minY; y <= maxY; y++) {
                     boolean shell = y == floorY || y == ceilingY;
-                    BlockState state = shell || !openColumn ? bedrock : air;
-                    world.setBlockState(pos.set(x, y, z), state, Block.NOTIFY_LISTENERS | Block.FORCE_STATE);
+                    BlockState state;
+                    int flags = BULK_GENERATION_FLAGS;
+                    if (shell || !openColumn) {
+                        state = bedrock;
+                    } else if (y == sculkY) {
+                        state = sculk;
+                    } else if (y == featureY && sculkFeature != null) {
+                        state = sculkFeature;
+                        flags = SCULK_FEATURE_FLAGS;
+                    } else if (y >= featureY) {
+                        BlockState sculkVein = sculkMazeVeinState(plan, localX, localZ, y, ceilingY);
+                        state = sculkVein != null ? sculkVein : air;
+                    } else {
+                        state = air;
+                    }
+                    world.setBlockState(pos.set(x, y, z), state, flags);
                 }
             }
         }
@@ -232,15 +248,18 @@ public final class AncientMazePiece extends StructurePiece {
 
         BlockState brick = Blocks.BEDROCK.getDefaultState();
         BlockState air = Blocks.AIR.getDefaultState();
+        BlockState sculk = Blocks.SCULK.getDefaultState();
         BlockPos.Mutable pos = new BlockPos.Mutable();
+        int sculkY = floorY + AncientMazeStructure.SCULK_FLOOR_Y_OFFSET_FROM_FLOOR;
         for (int x = Math.max(approachBox.getMinX(), chunkBox.getMinX()); x <= Math.min(approachBox.getMaxX(), chunkBox.getMaxX()); x++) {
             for (int z = Math.max(approachBox.getMinZ(), chunkBox.getMinZ()); z <= Math.min(approachBox.getMaxZ(), chunkBox.getMaxZ()); z++) {
                 for (int y = Math.max(approachBox.getMinY(), chunkBox.getMinY()); y <= Math.min(approachBox.getMaxY(), chunkBox.getMaxY()); y++) {
                     boolean floorOrCeiling = y == floorY || y == maxY;
                     boolean sideWall = x == minX - 1 || x == maxX + 1;
-                    boolean passage = x >= minX && x <= maxX && y > floorY && y < maxY;
-                    BlockState state = floorOrCeiling || sideWall ? brick : passage ? air : brick;
-                    world.setBlockState(pos.set(x, y, z), state, Block.NOTIFY_LISTENERS | Block.FORCE_STATE);
+                    boolean passageColumn = x >= minX && x <= maxX;
+                    boolean passage = passageColumn && y > floorY && y < maxY;
+                    BlockState state = floorOrCeiling || sideWall ? brick : passage ? y == sculkY ? sculk : air : brick;
+                    world.setBlockState(pos.set(x, y, z), state, BULK_GENERATION_FLAGS);
                 }
             }
         }
@@ -264,6 +283,7 @@ public final class AncientMazePiece extends StructurePiece {
         BlockState tile = Blocks.DEEPSLATE_TILES.getDefaultState();
         BlockState bedrock = Blocks.BEDROCK.getDefaultState();
         BlockState air = Blocks.AIR.getDefaultState();
+        BlockState sculk = Blocks.SCULK.getDefaultState();
         BlockPos.Mutable pos = new BlockPos.Mutable();
 
         int minX = Math.max(towerBox.getMinX(), chunkBox.getMinX());
@@ -305,7 +325,16 @@ public final class AncientMazePiece extends StructurePiece {
 
                     BlockState state = air;
                     if (belowBasement) {
-                        state = lowerMazeDoor || (!shaftFloor && !wall) ? air : bedrock;
+                        if (!wall && y == floorY + AncientMazeStructure.SCULK_FLOOR_Y_OFFSET_FROM_FLOOR) {
+                            state = sculk;
+                        } else if (!wall && !shaftFloor) {
+                            BlockState sculkVein = sculkShaftVeinState(dx, dz, y);
+                            state = sculkVein != null ? sculkVein : air;
+                        } else if (lowerMazeDoor) {
+                            state = y == floorY + AncientMazeStructure.SCULK_FLOOR_Y_OFFSET_FROM_FLOOR ? sculk : air;
+                        } else {
+                            state = bedrock;
+                        }
                     } else if (basementFloor) {
                         state = dx == 0 && dz == 0 ? air : bedrock;
                     } else if (roofDeck) {
@@ -319,7 +348,7 @@ public final class AncientMazePiece extends StructurePiece {
                     } else if (upperFloor) {
                         state = upperFloorHatch ? air : polished;
                     }
-                    world.setBlockState(pos.set(x, y, z), state, Block.NOTIFY_LISTENERS | Block.FORCE_STATE);
+                    world.setBlockState(pos.set(x, y, z), state, BULK_GENERATION_FLAGS);
                 }
             }
         }
@@ -336,7 +365,6 @@ public final class AncientMazePiece extends StructurePiece {
         placeIfInChunk(world, chunkBox, pos, centerX + 3, basementFloorY + 1, centerZ + 3, Blocks.LANTERN.getDefaultState());
         placeIfInChunk(world, chunkBox, pos, centerX - 5, basementFloorY + 1, centerZ + 1, Blocks.CHISELED_DEEPSLATE.getDefaultState());
         placeIfInChunk(world, chunkBox, pos, centerX + 4, basementFloorY + 1, centerZ + 1, Blocks.CHISELED_DEEPSLATE.getDefaultState());
-        placeWarningSign(world, chunkBox, pos, centerX, basementFloorY + 1, centerZ + 2);
 
         for (int y = basementFloorY + 1; y <= upperFloorY + 1; y++) {
             placeIfInChunk(world, chunkBox, pos, centerX - TOWER_WEST_SPAN + 1, y, centerZ + 3,
@@ -364,25 +392,6 @@ public final class AncientMazePiece extends StructurePiece {
         placeIfInChunk(world, chunkBox, pos, centerX, towerTopY, centerZ + TOWER_SOUTH_SPAN, Blocks.SOUL_LANTERN.getDefaultState());
     }
 
-    private void placeWarningSign(StructureWorldAccess world, BlockBox chunkBox, BlockPos.Mutable pos, int x, int y, int z) {
-        if (!chunkBox.contains(x, y, z)) {
-            return;
-        }
-        BlockPos signPos = pos.set(x, y, z).toImmutable();
-        world.setBlockState(signPos, Blocks.OAK_SIGN.getDefaultState().with(SignBlock.ROTATION, 0), Block.NOTIFY_LISTENERS | Block.FORCE_STATE);
-        BlockEntity blockEntity = world.getBlockEntity(signPos);
-        if (blockEntity instanceof SignBlockEntity sign) {
-            SignText warning = new SignText()
-                    .withColor(DyeColor.RED)
-                    .withGlowing(true)
-                    .withMessage(1, Text.literal("WARNING"));
-            NbtWriteView writeView = NbtWriteView.create(ErrorReporter.EMPTY, world.getRegistryManager());
-            writeView.put("front_text", SignText.CODEC, warning);
-            writeView.put("back_text", SignText.CODEC, new SignText());
-            sign.readComponentlessData(NbtReadView.create(ErrorReporter.EMPTY, world.getRegistryManager(), writeView.getNbt()));
-        }
-    }
-
     private void spawnVillager(StructureWorldAccess world, BlockBox chunkBox, int x, int y, int z) {
         if (!chunkBox.contains(x, y, z)) {
             return;
@@ -400,6 +409,103 @@ public final class AncientMazePiece extends StructurePiece {
         if (chunkBox.contains(x, y, z)) {
             world.setBlockState(pos.set(x, y, z), state, Block.NOTIFY_LISTENERS | Block.FORCE_STATE);
         }
+    }
+
+    private BlockState sculkFeatureState(AncientMazePlan plan, int localX, int localZ) {
+        if (localX < 0 || localZ < 0 || localX >= plan.totalWidth() || localZ >= plan.totalWidth()) {
+            return null;
+        }
+
+        long hash = sculkFeatureHash(localX, localZ);
+        int roll = (int) (hash & 1023L);
+        if (roll < 12) {
+            return Blocks.SCULK_SHRIEKER.getDefaultState().with(SculkShriekerBlock.CAN_SUMMON, true);
+        }
+        if (roll < 44) {
+            return Blocks.SCULK_SENSOR.getDefaultState();
+        }
+        if (roll < 52) {
+            return Blocks.SCULK_CATALYST.getDefaultState();
+        }
+        return null;
+    }
+
+    private BlockState sculkMazeVeinState(AncientMazePlan plan, int localX, int localZ, int y, int ceilingY) {
+        if (localX < 0 || localZ < 0 || localX >= plan.totalWidth() || localZ >= plan.totalWidth()) {
+            return null;
+        }
+
+        BlockState state = Blocks.SCULK_VEIN.getDefaultState();
+        boolean hasFace = false;
+        if (y == ceilingY - 1) {
+            state = state.with(MultifaceBlock.getProperty(Direction.UP), true);
+            hasFace = true;
+        }
+        for (Direction direction : Direction.Type.HORIZONTAL) {
+            int neighborX = localX + direction.getOffsetX();
+            int neighborZ = localZ + direction.getOffsetZ();
+            if (isMazeOpenColumn(plan, neighborX, neighborZ, corridorWidth)) {
+                continue;
+            }
+            if ((sculkVeinHash(localX, localZ, y, direction) & 255L) >= SCULK_WALL_VEIN_CHANCE) {
+                continue;
+            }
+            state = state.with(MultifaceBlock.getProperty(direction), true);
+            hasFace = true;
+        }
+        return hasFace ? state : null;
+    }
+
+    private BlockState sculkShaftVeinState(int dx, int dz, int y) {
+        BlockState state = Blocks.SCULK_VEIN.getDefaultState();
+        boolean hasFace = false;
+        if (dx == -TOWER_WEST_SPAN + 1) {
+            state = withShaftVeinFace(state, dx, dz, y, Direction.WEST);
+            hasFace = MultifaceBlock.hasDirection(state, Direction.WEST);
+        }
+        if (dx == TOWER_EAST_SPAN - 1) {
+            state = withShaftVeinFace(state, dx, dz, y, Direction.EAST);
+            hasFace = hasFace || MultifaceBlock.hasDirection(state, Direction.EAST);
+        }
+        if (dz == -TOWER_NORTH_SPAN + 1) {
+            state = withShaftVeinFace(state, dx, dz, y, Direction.NORTH);
+            hasFace = hasFace || MultifaceBlock.hasDirection(state, Direction.NORTH);
+        }
+        if (dz == TOWER_SOUTH_SPAN - 1) {
+            state = withShaftVeinFace(state, dx, dz, y, Direction.SOUTH);
+            hasFace = hasFace || MultifaceBlock.hasDirection(state, Direction.SOUTH);
+        }
+        return hasFace ? state : null;
+    }
+
+    private BlockState withShaftVeinFace(BlockState state, int dx, int dz, int y, Direction direction) {
+        if ((sculkVeinHash(dx, dz, y, direction) & 255L) >= SCULK_SHAFT_VEIN_CHANCE) {
+            return state;
+        }
+        return state.with(MultifaceBlock.getProperty(direction), true);
+    }
+
+    private long sculkFeatureHash(int localX, int localZ) {
+        long value = mazeSeed ^ ((long) localX * 0x9E3779B97F4A7C15L);
+        value ^= (long) localZ * 0xC2B2AE3D27D4EB4FL;
+        return mixSculkHash(value);
+    }
+
+    private long sculkVeinHash(int localX, int localZ, int y, Direction direction) {
+        long value = mazeSeed ^ ((long) localX * 0x9E3779B97F4A7C15L);
+        value ^= (long) localZ * 0xC2B2AE3D27D4EB4FL;
+        value ^= (long) y * 0x165667B19E3779F9L;
+        value ^= (long) direction.ordinal() * 0x85EBCA77C2B2AE63L;
+        return mixSculkHash(value);
+    }
+
+    private static long mixSculkHash(long value) {
+        value ^= value >>> 33;
+        value *= 0xff51afd7ed558ccdL;
+        value ^= value >>> 33;
+        value *= 0xc4ceb9fe1a85ec53L;
+        value ^= value >>> 33;
+        return value;
     }
 
     private static boolean isWindow(int dx, int dz, int yFromSurface) {
@@ -448,7 +554,11 @@ public final class AncientMazePiece extends StructurePiece {
     }
 
     private void placeCenterChest(StructureWorldAccess world, BlockBox chunkBox, AncientMazePlan plan) {
-        BlockPos chestPos = new BlockPos(originX + plan.centerBlockOffset(), floorY + 1, originZ + plan.centerBlockOffset());
+        BlockPos chestPos = new BlockPos(
+                originX + plan.centerBlockOffset(),
+                floorY + AncientMazeStructure.WALKABLE_Y_OFFSET_FROM_FLOOR,
+                originZ + plan.centerBlockOffset()
+        );
         if (!chunkBox.contains(chestPos)) {
             return;
         }
@@ -542,6 +652,26 @@ public final class AncientMazePiece extends StructurePiece {
         );
     }
 
+    static boolean towerIntersectsChunk(
+            int originX,
+            int originZ,
+            int cellCount,
+            int corridorWidth,
+            int wallThickness,
+            ChunkPos chunkPos
+    ) {
+        int centerX = originX + towerCenterOffsetX(cellCount, corridorWidth, wallThickness);
+        int centerZ = originZ + towerCenterOffsetZ(wallThickness);
+        int chunkMinX = chunkPos.getStartX();
+        int chunkMinZ = chunkPos.getStartZ();
+        int chunkMaxX = chunkMinX + 15;
+        int chunkMaxZ = chunkMinZ + 15;
+        return chunkMaxX >= centerX - TOWER_WEST_SPAN
+                && chunkMinX <= centerX + TOWER_EAST_SPAN
+                && chunkMaxZ >= centerZ - TOWER_NORTH_SPAN
+                && chunkMinZ <= centerZ + TOWER_SOUTH_SPAN;
+    }
+
     static boolean isMazeOpenColumn(AncientMazePlan plan, int localX, int localZ, int corridorWidth) {
         int width = plan.totalWidth();
         if (localX >= 0 && localZ >= 0 && localX < width && localZ < width) {
@@ -603,6 +733,27 @@ public final class AncientMazePiece extends StructurePiece {
         int maxX = Math.max(originX + width + OUTER_SHELL_THICKNESS - 1, originX + entranceCenterX + TOWER_EAST_SPAN);
         int maxZ = Math.max(originZ + width + OUTER_SHELL_THICKNESS - 1, originZ + towerCenterZ + TOWER_SOUTH_SPAN);
         return new BlockBox(minX, floorY, minZ, maxX, topY, maxZ);
+    }
+
+    static boolean footprintIntersectsChunk(
+            int originX,
+            int originZ,
+            int cellCount,
+            int corridorWidth,
+            int wallThickness,
+            int wallHeight,
+            ChunkPos chunkPos,
+            int margin
+    ) {
+        BlockBox box = createBoundingBox(originX, 0, originZ, cellCount, corridorWidth, wallThickness, wallHeight, 1);
+        int chunkMinX = chunkPos.getStartX();
+        int chunkMinZ = chunkPos.getStartZ();
+        int chunkMaxX = chunkMinX + 15;
+        int chunkMaxZ = chunkMinZ + 15;
+        return chunkMaxX >= box.getMinX() - margin
+                && chunkMinX <= box.getMaxX() + margin
+                && chunkMaxZ >= box.getMinZ() - margin
+                && chunkMinZ <= box.getMaxZ() + margin;
     }
 
     private record PlanKey(long mazeSeed, int cellCount, int corridorWidth, int wallThickness) {
