@@ -1,0 +1,12 @@
+{
+  "type": "quarkmod:ancient_maze",
+  "biomes": "#minecraft:is_overworld",
+  "cell_count": 129,
+  "corridor_width": 6,
+  "seed_salt": 51942877,
+  "spawn_overrides": {},
+  "step": "underground_structures",
+  "terrain_adaptation": "none",
+  "wall_height": 20,
+  "wall_thickness": 2
+}

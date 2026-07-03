@@ -1,0 +1,12 @@
+{
+	"required": true,
+	"package": "com.strangequark.ancientmaze.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"mixins": [
+		"SpawnHelperAncientMazeMixin",
+		"StructureAncientMazeExclusionMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}
