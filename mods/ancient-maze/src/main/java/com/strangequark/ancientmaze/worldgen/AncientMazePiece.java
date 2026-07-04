@@ -1,22 +1,28 @@
 package com.strangequark.ancientmaze.worldgen;
 
 import com.strangequark.ancientmaze.AncientMazeMod;
+import com.strangequark.ancientmaze.item.ModItems;
+import com.strangequark.ancientmaze.village.AncientMazeVillagers;
 import net.minecraft.block.Block;
-import net.minecraft.block.BarrelBlock;
 import net.minecraft.block.BedBlock;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
+import net.minecraft.block.CandleBlock;
 import net.minecraft.block.ChestBlock;
+import net.minecraft.block.HorizontalConnectingBlock;
 import net.minecraft.block.HorizontalFacingBlock;
 import net.minecraft.block.LadderBlock;
 import net.minecraft.block.MultifaceBlock;
 import net.minecraft.block.SculkShriekerBlock;
+import net.minecraft.block.StairsBlock;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.LootableContainerBlockEntity;
 import net.minecraft.block.enums.BedPart;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnReason;
+import net.minecraft.entity.decoration.ItemFrameEntity;
 import net.minecraft.entity.passive.VillagerEntity;
+import net.minecraft.item.ItemStack;
 import net.minecraft.loot.LootTable;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.RegistryKey;
@@ -179,9 +185,11 @@ public final class AncientMazePiece extends StructurePiece {
         }
         AncientMazePlan plan = plan();
         generateMazeBox(world, chunkBox, plan);
+        generateCenterPrizeRoom(world, chunkBox, plan);
         generateEntranceApproach(world, chunkBox, plan);
         generateTower(world, chunkBox, plan);
         placeCenterChest(world, chunkBox, plan);
+        placeCenterPickaxeFrame(world, chunkBox, plan);
     }
 
     private void generateMazeBox(StructureWorldAccess world, BlockBox chunkBox, AncientMazePlan plan) {
@@ -232,6 +240,57 @@ public final class AncientMazePiece extends StructurePiece {
                 }
             }
         }
+    }
+
+    private void generateCenterPrizeRoom(StructureWorldAccess world, BlockBox chunkBox, AncientMazePlan plan) {
+        BlockBox roomBox = centerPrizeRoomBox(plan);
+        if (!roomBox.intersects(chunkBox)) {
+            return;
+        }
+
+        BlockState bedrock = Blocks.BEDROCK.getDefaultState();
+        BlockState sculk = Blocks.SCULK.getDefaultState();
+        BlockState air = Blocks.AIR.getDefaultState();
+        BlockPos.Mutable pos = new BlockPos.Mutable();
+        int minX = Math.max(roomBox.getMinX(), chunkBox.getMinX());
+        int maxX = Math.min(roomBox.getMaxX(), chunkBox.getMaxX());
+        int minY = Math.max(roomBox.getMinY(), chunkBox.getMinY());
+        int maxY = Math.min(roomBox.getMaxY(), chunkBox.getMaxY());
+        int minZ = Math.max(roomBox.getMinZ(), chunkBox.getMinZ());
+        int maxZ = Math.min(roomBox.getMaxZ(), chunkBox.getMaxZ());
+        int ceilingY = floorY + wallHeight + 1;
+        int sculkY = floorY + AncientMazeStructure.SCULK_FLOOR_Y_OFFSET_FROM_FLOOR;
+        int carpetY = floorY + AncientMazeStructure.WALKABLE_Y_OFFSET_FROM_FLOOR;
+
+        for (int x = minX; x <= maxX; x++) {
+            for (int z = minZ; z <= maxZ; z++) {
+                boolean perimeter = x == roomBox.getMinX()
+                        || x == roomBox.getMaxX()
+                        || z == roomBox.getMinZ()
+                        || z == roomBox.getMaxZ();
+                boolean doorway = isCenterPrizeRoomDoor(plan, roomBox, x, z);
+                for (int y = minY; y <= maxY; y++) {
+                    boolean wall = perimeter && !doorway;
+                    BlockState state;
+                    int flags = BULK_GENERATION_FLAGS;
+                    if (y == floorY || y == ceilingY || wall) {
+                        state = bedrock;
+                    } else if (y == sculkY) {
+                        state = isCenterPrizeRoomFloorLight(plan, roomBox, x, z) ? Blocks.SEA_LANTERN.getDefaultState() : sculk;
+                    } else if (y == carpetY && shouldPlaceCenterPrizeRoomCarpet(plan, roomBox, x, z)) {
+                        state = centerPrizeRoomCarpetState(x, z);
+                        flags = Block.NOTIFY_LISTENERS | Block.FORCE_STATE;
+                    } else if (y >= carpetY) {
+                        state = air;
+                    } else {
+                        state = air;
+                    }
+                    world.setBlockState(pos.set(x, y, z), state, flags);
+                }
+            }
+        }
+
+        placeCenterPrizeRoomLighting(world, chunkBox, roomBox, plan);
     }
 
     private void generateEntranceApproach(StructureWorldAccess world, BlockBox chunkBox, AncientMazePlan plan) {
@@ -344,7 +403,7 @@ public final class AncientMazePiece extends StructurePiece {
                     } else if (y >= towerTopY - 1) {
                         state = air;
                     } else if (wall && !surfaceDoor) {
-                        state = window ? Blocks.IRON_BARS.getDefaultState() : towerWallState(corner, wallBand, dx, dz, yFromSurface, brick, crackedBrick, chiseled, polished, tile);
+                        state = window ? towerWindowBarsState(dx, dz) : towerWallState(corner, wallBand, dx, dz, yFromSurface, brick, crackedBrick, chiseled, polished, tile);
                     } else if (upperFloor) {
                         state = upperFloorHatch ? air : polished;
                     }
@@ -371,23 +430,45 @@ public final class AncientMazePiece extends StructurePiece {
                     Blocks.LADDER.getDefaultState().with(LadderBlock.FACING, Direction.EAST));
         }
 
-        placeIfInChunk(world, chunkBox, pos, centerX - 3, upperFloorY + 1, centerZ + 3,
-                Blocks.RED_BED.getDefaultState().with(HorizontalFacingBlock.FACING, Direction.EAST).with(BedBlock.PART, BedPart.FOOT));
-        placeIfInChunk(world, chunkBox, pos, centerX - 2, upperFloorY + 1, centerZ + 3,
-                Blocks.RED_BED.getDefaultState().with(HorizontalFacingBlock.FACING, Direction.EAST).with(BedBlock.PART, BedPart.HEAD));
-        placeIfInChunk(world, chunkBox, pos, centerX + 4, upperFloorY + 1, centerZ - 3,
-                Blocks.BARREL.getDefaultState().with(BarrelBlock.FACING, Direction.UP));
-        placeIfInChunk(world, chunkBox, pos, centerX + 4, upperFloorY + 1, centerZ - 2, Blocks.CRAFTING_TABLE.getDefaultState());
-        placeIfInChunk(world, chunkBox, pos, centerX + 4, upperFloorY + 1, centerZ - 1,
+        int livingY = upperFloorY + 1;
+        placeIfInChunk(world, chunkBox, pos, centerX + 3, livingY, centerZ + 3,
+                Blocks.RED_BED.getDefaultState().with(HorizontalFacingBlock.FACING, Direction.NORTH).with(BedBlock.PART, BedPart.FOOT));
+        placeIfInChunk(world, chunkBox, pos, centerX + 3, livingY, centerZ + 2,
+                Blocks.RED_BED.getDefaultState().with(HorizontalFacingBlock.FACING, Direction.NORTH).with(BedBlock.PART, BedPart.HEAD));
+
+        placeIfInChunk(world, chunkBox, pos, centerX + 4, livingY, centerZ - 4,
+                Blocks.CHEST.getDefaultState().with(ChestBlock.FACING, Direction.WEST));
+        placeIfInChunk(world, chunkBox, pos, centerX + 4, livingY, centerZ - 3, Blocks.CRAFTING_TABLE.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX + 4, livingY, centerZ - 2,
                 Blocks.FURNACE.getDefaultState().with(HorizontalFacingBlock.FACING, Direction.WEST));
-        placeIfInChunk(world, chunkBox, pos, centerX - 5, upperFloorY + 1, centerZ - 3, Blocks.BOOKSHELF.getDefaultState());
-        placeIfInChunk(world, chunkBox, pos, centerX - 5, upperFloorY + 1, centerZ - 2, Blocks.BOOKSHELF.getDefaultState());
-        placeIfInChunk(world, chunkBox, pos, centerX - 5, upperFloorY + 1, centerZ - 1, Blocks.POTTED_POPPY.getDefaultState());
-        placeIfInChunk(world, chunkBox, pos, centerX - 1, upperFloorY + 1, centerZ - 4, Blocks.LANTERN.getDefaultState());
-        placeIfInChunk(world, chunkBox, pos, centerX + 2, upperFloorY + 1, centerZ - 4, Blocks.LANTERN.getDefaultState());
-        placeIfInChunk(world, chunkBox, pos, centerX - 1, upperFloorY + 1, centerZ + 4, Blocks.COMPOSTER.getDefaultState());
-        placeIfInChunk(world, chunkBox, pos, centerX + 1, upperFloorY + 1, centerZ + 2, Blocks.OAK_FENCE.getDefaultState());
-        placeIfInChunk(world, chunkBox, pos, centerX + 1, upperFloorY + 2, centerZ + 2, Blocks.OAK_PRESSURE_PLATE.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX + 4, livingY, centerZ - 1,
+                Blocks.TRAPPED_CHEST.getDefaultState().with(ChestBlock.FACING, Direction.WEST));
+
+        placeIfInChunk(world, chunkBox, pos, centerX - 4, livingY, centerZ - 4, Blocks.BOOKSHELF.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX - 3, livingY, centerZ - 4, Blocks.CHISELED_BOOKSHELF.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX - 2, livingY, centerZ - 4, Blocks.BOOKSHELF.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX - 1, livingY, centerZ - 4, Blocks.CHISELED_BOOKSHELF.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX, livingY, centerZ - 4, Blocks.BOOKSHELF.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX + 1, livingY, centerZ - 4, Blocks.POTTED_WITHER_ROSE.getDefaultState());
+
+        placeIfInChunk(world, chunkBox, pos, centerX - 4, livingY, centerZ, Blocks.ANVIL.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX - 1, livingY, centerZ, Blocks.POLISHED_DEEPSLATE.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX - 1, livingY + 1, centerZ,
+                Blocks.CANDLE.getDefaultState().with(CandleBlock.CANDLES, 3).with(CandleBlock.LIT, true));
+        placeIfInChunk(world, chunkBox, pos, centerX - 1, livingY, centerZ + 1,
+                Blocks.DARK_OAK_STAIRS.getDefaultState().with(StairsBlock.FACING, Direction.NORTH));
+
+        placeIfInChunk(world, chunkBox, pos, centerX, livingY, centerZ - 1, Blocks.GRAY_CARPET.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX + 1, livingY, centerZ - 1, Blocks.GRAY_CARPET.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX, livingY, centerZ, Blocks.BLACK_CARPET.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX + 1, livingY, centerZ, Blocks.GRAY_CARPET.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX, livingY, centerZ + 1, Blocks.GRAY_CARPET.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX + 1, livingY, centerZ + 1, Blocks.BLACK_CARPET.getDefaultState());
+
+        placeIfInChunk(world, chunkBox, pos, centerX - 5, livingY, centerZ - 2, Blocks.SOUL_LANTERN.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX + 3, livingY, centerZ - 4, Blocks.LANTERN.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX - 4, livingY, centerZ + 4, Blocks.LANTERN.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX + 2, livingY, centerZ + 4, Blocks.SOUL_LANTERN.getDefaultState());
         placeIfInChunk(world, chunkBox, pos, centerX, towerTopY, centerZ - TOWER_NORTH_SPAN, Blocks.SOUL_LANTERN.getDefaultState());
         placeIfInChunk(world, chunkBox, pos, centerX, towerTopY, centerZ + TOWER_SOUTH_SPAN, Blocks.SOUL_LANTERN.getDefaultState());
     }
@@ -401,7 +482,7 @@ public final class AncientMazePiece extends StructurePiece {
             return;
         }
         villager.refreshPositionAndAngles(x + 0.5, y, z + 0.5, 180.0F, 0.0F);
-        villager.setPersistent();
+        AncientMazeVillagers.configureTowerVillager(villager, world.toServerWorld());
         world.spawnEntityAndPassengers(villager);
     }
 
@@ -518,6 +599,21 @@ public final class AncientMazePiece extends StructurePiece {
                 || ((dx == -TOWER_WEST_SPAN || dx == TOWER_EAST_SPAN) && Math.abs(dz) <= 1);
     }
 
+    private static BlockState towerWindowBarsState(int dx, int dz) {
+        BlockState state = Blocks.IRON_BARS.getDefaultState();
+        if (dz == -TOWER_NORTH_SPAN || dz == TOWER_SOUTH_SPAN) {
+            return state
+                    .with(HorizontalConnectingBlock.WEST, true)
+                    .with(HorizontalConnectingBlock.EAST, true);
+        }
+        if (dx == -TOWER_WEST_SPAN || dx == TOWER_EAST_SPAN) {
+            return state
+                    .with(HorizontalConnectingBlock.NORTH, true)
+                    .with(HorizontalConnectingBlock.SOUTH, true);
+        }
+        return state;
+    }
+
     private static boolean isUpperFloorHatch(int dx, int dz) {
         return dx == -TOWER_WEST_SPAN + 1 && dz == 3;
     }
@@ -554,10 +650,12 @@ public final class AncientMazePiece extends StructurePiece {
     }
 
     private void placeCenterChest(StructureWorldAccess world, BlockBox chunkBox, AncientMazePlan plan) {
+        BlockBox roomBox = centerPrizeRoomBox(plan);
+        int centerX = originX + plan.centerBlockOffset();
         BlockPos chestPos = new BlockPos(
-                originX + plan.centerBlockOffset(),
+                centerX - 1,
                 floorY + AncientMazeStructure.WALKABLE_Y_OFFSET_FROM_FLOOR,
-                originZ + plan.centerBlockOffset()
+                roomBox.getMaxZ() - 1
         );
         if (!chunkBox.contains(chestPos)) {
             return;
@@ -570,6 +668,103 @@ public final class AncientMazePiece extends StructurePiece {
             lootable.setLootTable(CENTER_LOOT_TABLE);
             lootable.setLootTableSeed(mazeSeed);
         }
+    }
+
+    private void placeCenterPickaxeFrame(StructureWorldAccess world, BlockBox chunkBox, AncientMazePlan plan) {
+        BlockBox roomBox = centerPrizeRoomBox(plan);
+        int centerX = originX + plan.centerBlockOffset();
+        BlockPos framePos = new BlockPos(
+                centerX + 2,
+                floorY + AncientMazeStructure.WALKABLE_Y_OFFSET_FROM_FLOOR + 2,
+                roomBox.getMaxZ() - 1
+        );
+        if (!chunkBox.contains(framePos)) {
+            return;
+        }
+
+        ItemFrameEntity frame = new ItemFrameEntity(world.toServerWorld(), framePos, Direction.NORTH);
+        frame.setHeldItemStack(new ItemStack(ModItems.ANCIENT_PICKAXE), false);
+        world.spawnEntityAndPassengers(frame);
+    }
+
+    private void placeCenterPrizeRoomLighting(StructureWorldAccess world, BlockBox chunkBox, BlockBox roomBox, AncientMazePlan plan) {
+        BlockPos.Mutable pos = new BlockPos.Mutable();
+        int centerX = originX + plan.centerBlockOffset();
+        int centerZ = originZ + plan.centerBlockOffset();
+        int y = floorY + AncientMazeStructure.WALKABLE_Y_OFFSET_FROM_FLOOR;
+
+        placeIfInChunk(world, chunkBox, pos, roomBox.getMinX() + 3, y, roomBox.getMinZ() + 3, Blocks.SOUL_LANTERN.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, roomBox.getMaxX() - 3, y, roomBox.getMinZ() + 3, Blocks.SOUL_LANTERN.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, roomBox.getMinX() + 3, y, roomBox.getMaxZ() - 3, Blocks.SOUL_LANTERN.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, roomBox.getMaxX() - 3, y, roomBox.getMaxZ() - 3, Blocks.SOUL_LANTERN.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX - 5, y, centerZ, Blocks.LANTERN.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX + 4, y, centerZ, Blocks.LANTERN.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX, y, centerZ - 5, Blocks.SOUL_LANTERN.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX, y, centerZ + 4, Blocks.SOUL_LANTERN.getDefaultState());
+    }
+
+    private boolean shouldPlaceCenterPrizeRoomCarpet(AncientMazePlan plan, BlockBox roomBox, int x, int z) {
+        if (x <= roomBox.getMinX() || x >= roomBox.getMaxX() || z <= roomBox.getMinZ() || z >= roomBox.getMaxZ()) {
+            return false;
+        }
+        int centerX = originX + plan.centerBlockOffset();
+        if (z >= roomBox.getMaxZ() - 2 && x >= centerX - 3 && x <= centerX + 3) {
+            return false;
+        }
+        if (z <= roomBox.getMinZ() + 1 && x >= centerPrizeRoomDoorMinX(plan) && x <= centerPrizeRoomDoorMaxX(plan)) {
+            return false;
+        }
+        return true;
+    }
+
+    private boolean isCenterPrizeRoomFloorLight(AncientMazePlan plan, BlockBox roomBox, int x, int z) {
+        if (!shouldPlaceCenterPrizeRoomCarpet(plan, roomBox, x, z)) {
+            return false;
+        }
+        int centerX = originX + plan.centerBlockOffset();
+        int centerZ = originZ + plan.centerBlockOffset();
+        return Math.floorMod(x - centerX, 6) == 0 && Math.floorMod(z - centerZ, 6) == 0;
+    }
+
+    private static BlockState centerPrizeRoomCarpetState(int x, int z) {
+        int pattern = Math.floorMod(x * 31 + z * 17, 9);
+        if (pattern == 0) {
+            return Blocks.CYAN_CARPET.getDefaultState();
+        }
+        return (x + z) % 2 == 0 ? Blocks.BLACK_CARPET.getDefaultState() : Blocks.GRAY_CARPET.getDefaultState();
+    }
+
+    private BlockBox centerPrizeRoomBox(AncientMazePlan plan) {
+        int centerX = originX + plan.centerBlockOffset();
+        int centerZ = originZ + plan.centerBlockOffset();
+        int negativeRadius = centerPrizeRoomNegativeRadius();
+        int positiveRadius = negativeRadius - 1;
+        return new BlockBox(
+                centerX - negativeRadius,
+                floorY,
+                centerZ - negativeRadius,
+                centerX + positiveRadius,
+                floorY + AncientMazePlan.totalHeight(wallHeight) - 1,
+                centerZ + positiveRadius
+        );
+    }
+
+    private int centerPrizeRoomNegativeRadius() {
+        return corridorWidth + corridorWidth / 2 + wallThickness * 2;
+    }
+
+    private boolean isCenterPrizeRoomDoor(AncientMazePlan plan, BlockBox roomBox, int x, int z) {
+        return z == roomBox.getMinZ()
+                && x >= centerPrizeRoomDoorMinX(plan)
+                && x <= centerPrizeRoomDoorMaxX(plan);
+    }
+
+    private int centerPrizeRoomDoorMinX(AncientMazePlan plan) {
+        return originX + plan.centerBlockOffset() - corridorWidth / 2;
+    }
+
+    private int centerPrizeRoomDoorMaxX(AncientMazePlan plan) {
+        return centerPrizeRoomDoorMinX(plan) + corridorWidth - 1;
     }
 
     private AncientMazePlan plan() {

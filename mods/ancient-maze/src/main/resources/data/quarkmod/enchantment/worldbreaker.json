@@ -1,0 +1,21 @@
+{
+  "anvil_cost": 12,
+  "description": {
+    "translate": "enchantment.quarkmod.worldbreaker"
+  },
+  "max_cost": {
+    "base": 55,
+    "per_level_above_first": 0
+  },
+  "max_level": 1,
+  "min_cost": {
+    "base": 30,
+    "per_level_above_first": 0
+  },
+  "primary_items": "#quarkmod:enchantable/ancient_pickaxe",
+  "slots": [
+    "mainhand"
+  ],
+  "supported_items": "#quarkmod:enchantable/ancient_pickaxe",
+  "weight": 1
+}

@@ -3,8 +3,12 @@
 	"package": "com.strangequark.ancientmaze.mixin",
 	"compatibilityLevel": "JAVA_21",
 	"mixins": [
+		"AbstractBlockWorldbreakerMixin",
+		"AnvilScreenHandlerAncientEnchantmentsMixin",
+		"PlayerEntityAncientPickaxeMixin",
 		"SpawnHelperAncientMazeMixin",
-		"StructureAncientMazeExclusionMixin"
+		"StructureAncientMazeExclusionMixin",
+		"VillagerEntityAncientMazeTradeMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

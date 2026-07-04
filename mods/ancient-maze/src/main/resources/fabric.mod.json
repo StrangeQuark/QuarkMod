@@ -17,6 +17,9 @@
 	"entrypoints": {
 		"main": [
 			"com.strangequark.ancientmaze.AncientMazeMod"
+		],
+		"client": [
+			"com.strangequark.ancientmaze.client.AncientMazeClient"
 		]
 	},
 	"mixins": [
