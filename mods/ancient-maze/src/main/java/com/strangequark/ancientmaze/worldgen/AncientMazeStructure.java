@@ -238,6 +238,25 @@ public final class AncientMazeStructure extends Structure {
         return false;
     }
 
+    public static boolean protectsGeneratedBedrock(long worldSeed, int worldBottomY, BlockPos pos) {
+        int floorY = worldBottomY + FLOOR_Y_OFFSET_FROM_WORLD_BOTTOM;
+        if (pos.getY() < floorY) {
+            return false;
+        }
+
+        Optional<LocatedMaze> locatedMaze = locateMazeForChunk(
+                worldSeed,
+                floorY,
+                new ChunkPos(pos),
+                DEFAULT_CELL_COUNT,
+                DEFAULT_CORRIDOR_WIDTH,
+                DEFAULT_WALL_THICKNESS,
+                DEFAULT_WALL_HEIGHT,
+                DEFAULT_SEED_SALT
+        );
+        return locatedMaze.isPresent() && locatedMaze.get().containsFootprintColumn(pos.getX(), pos.getZ());
+    }
+
     static Optional<LocatedMaze> locateMazeInteriorAt(long worldSeed, int worldBottomY, BlockPos pos) {
         int floorY = worldBottomY + FLOOR_Y_OFFSET_FROM_WORLD_BOTTOM;
         if (pos.getY() < floorY + WALKABLE_Y_OFFSET_FROM_FLOOR || pos.getY() > floorY + DEFAULT_WALL_HEIGHT) {
@@ -515,6 +534,10 @@ public final class AncientMazeStructure extends Structure {
                     && localX < plan.totalWidth()
                     && localZ < plan.totalWidth()
                     && plan.isOpenBlock(localX, localZ);
+        }
+
+        boolean containsFootprintColumn(int x, int z) {
+            return AncientMazePiece.footprintContainsColumn(originX, originZ, cellCount, corridorWidth, wallThickness, x, z);
         }
 
         private AncientMazePlan plan() {
