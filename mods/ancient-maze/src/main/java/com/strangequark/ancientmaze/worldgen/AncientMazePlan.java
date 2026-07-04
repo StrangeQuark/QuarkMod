@@ -185,6 +185,7 @@ final class AncientMazePlan {
         boolean[][] eastOpen = new boolean[cellCount][cellCount];
         boolean[][] southOpen = new boolean[cellCount][cellCount];
         carvePerfectMaze(random, cellCount, eastOpen, southOpen);
+        carveEntranceRunToCenter(cellCount, southOpen);
         carveCenterChamber(cellCount, eastOpen, southOpen);
         Entrance entrance = entrance(cellCount);
         return new AncientMazePlan(cellCount, corridorWidth, wallThickness, eastOpen, southOpen, entrance);
@@ -245,6 +246,13 @@ final class AncientMazePlan {
         }
     }
 
+    private static void carveEntranceRunToCenter(int cellCount, boolean[][] southOpen) {
+        int center = cellCount / 2;
+        for (int z = 0; z < center - 1; z++) {
+            southOpen[center][z] = true;
+        }
+    }
+
     private static Entrance entrance(int cellCount) {
         return new Entrance(EntranceSide.NORTH, cellCount / 2, 0);
     }
@@ -252,10 +260,7 @@ final class AncientMazePlan {
     private static AncientMazePlan fallback(int cellCount, int corridorWidth, int wallThickness) {
         boolean[][] eastOpen = new boolean[cellCount][cellCount];
         boolean[][] southOpen = new boolean[cellCount][cellCount];
-        int center = cellCount / 2;
-        for (int z = 0; z < center; z++) {
-            southOpen[center][z] = true;
-        }
+        carveEntranceRunToCenter(cellCount, southOpen);
         carveCenterChamber(cellCount, eastOpen, southOpen);
         return new AncientMazePlan(cellCount, corridorWidth, wallThickness, eastOpen, southOpen, entrance(cellCount));
     }
