@@ -20,6 +20,8 @@ import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.registry.tag.BlockTags;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
@@ -214,6 +216,8 @@ public final class AncientEnchantmentLogic {
         if (ServerPlayNetworking.canSend(player, EchoProspectorPayload.ID)) {
             ServerPlayNetworking.send(player, new EchoProspectorPayload(markers));
         }
+        player.playSoundToPlayer(SoundEvents.BLOCK_SCULK_SENSOR_CLICKING, SoundCategory.PLAYERS, 0.7F, 1.35F);
+        player.playSoundToPlayer(SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.PLAYERS, 0.35F, 0.65F);
         player.getItemCooldownManager().set(stack, ECHO_COOLDOWN_TICKS);
         return true;
     }
