@@ -20,12 +20,17 @@ import net.minecraft.registry.entry.RegistryEntry;
 import net.minecraft.registry.tag.BlockTags;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -35,10 +40,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 public final class AncientEnchantmentLogic {
-    private static final int ECHO_RADIUS = 50;
+    private static final int ECHO_HORIZONTAL_RADIUS = 20;
+    private static final int ECHO_VERTICAL_RADIUS = 20;
     private static final int ECHO_COOLDOWN_TICKS = 20 * 30;
     private static final int ECHO_MARKER_LIFETIME_TICKS = 20 * 12;
     private static final int ECHO_MARKER_LIMIT = 256;
+    private static final int END_PORTAL_CLEANUP_RADIUS = 5;
+    private static final int END_PORTAL_CLEANUP_LIMIT = 64;
     private static final String ECHO_MARKER_TAG = "quarkmod_ancient_maze_echo_marker";
     private static final float RELIC_EFFICIENCY_SPEED_PER_BLOCK = 0.75F;
     private static final int RELIC_EFFICIENCY_MAX_STREAK = 4096;
@@ -91,6 +99,7 @@ public final class AncientEnchantmentLogic {
             Blocks.TRIAL_SPAWNER,
             Blocks.VAULT
     );
+    private static final List<BlockPos> ECHO_SCAN_OFFSETS = createEchoScanOffsets();
     private static final ConcurrentMap<UUID, MiningStreak> RELIC_EFFICIENCY_STREAKS = new ConcurrentHashMap<>();
 
     private AncientEnchantmentLogic() {
@@ -187,34 +196,58 @@ public final class AncientEnchantmentLogic {
 
         List<BlockPos> markers = new ArrayList<>(ECHO_MARKER_LIMIT);
         BlockPos center = player.getBlockPos();
-        int minY = Math.max(world.getBottomY(), center.getY() - ECHO_RADIUS);
-        int maxY = Math.min(world.getTopYInclusive(), center.getY() + ECHO_RADIUS);
         BlockPos.Mutable pos = new BlockPos.Mutable();
-        int radiusSquared = ECHO_RADIUS * ECHO_RADIUS;
-        for (int y = minY; y <= maxY && markers.size() < ECHO_MARKER_LIMIT; y++) {
-            for (int x = center.getX() - ECHO_RADIUS; x <= center.getX() + ECHO_RADIUS && markers.size() < ECHO_MARKER_LIMIT; x++) {
-                for (int z = center.getZ() - ECHO_RADIUS; z <= center.getZ() + ECHO_RADIUS && markers.size() < ECHO_MARKER_LIMIT; z++) {
-                    if (center.getSquaredDistance(x, y, z) > radiusSquared) {
-                        continue;
-                    }
-                    pos.set(x, y, z);
-                    if (!world.isChunkLoaded(pos)) {
-                        continue;
-                    }
+        for (BlockPos offset : ECHO_SCAN_OFFSETS) {
+            if (markers.size() >= ECHO_MARKER_LIMIT) {
+                break;
+            }
 
-                    BlockState state = world.getBlockState(pos);
-                    if (isValuableBlock(state)) {
-                        markers.add(pos.toImmutable());
-                    }
-                }
+            pos.set(center.getX() + offset.getX(), center.getY() + offset.getY(), center.getZ() + offset.getZ());
+            if (pos.getY() < world.getBottomY() || pos.getY() > world.getTopYInclusive() || !world.isChunkLoaded(pos)) {
+                continue;
+            }
+
+            BlockState state = world.getBlockState(pos);
+            if (isValuableBlock(state)) {
+                markers.add(pos.toImmutable());
             }
         }
 
         if (ServerPlayNetworking.canSend(player, EchoProspectorPayload.ID)) {
             ServerPlayNetworking.send(player, new EchoProspectorPayload(markers));
         }
+        player.playSoundToPlayer(SoundEvents.BLOCK_SCULK_SENSOR_CLICKING, SoundCategory.PLAYERS, 0.7F, 1.35F);
+        player.playSoundToPlayer(SoundEvents.BLOCK_AMETHYST_BLOCK_CHIME, SoundCategory.PLAYERS, 0.35F, 0.65F);
         player.getItemCooldownManager().set(stack, ECHO_COOLDOWN_TICKS);
         return true;
+    }
+
+    private static List<BlockPos> createEchoScanOffsets() {
+        List<BlockPos> offsets = new ArrayList<>();
+        long horizontalRadiusSquared = (long) ECHO_HORIZONTAL_RADIUS * ECHO_HORIZONTAL_RADIUS;
+        long verticalRadiusSquared = (long) ECHO_VERTICAL_RADIUS * ECHO_VERTICAL_RADIUS;
+        long ellipsoidLimit = horizontalRadiusSquared * verticalRadiusSquared;
+
+        for (int y = -ECHO_VERTICAL_RADIUS; y <= ECHO_VERTICAL_RADIUS; y++) {
+            for (int x = -ECHO_HORIZONTAL_RADIUS; x <= ECHO_HORIZONTAL_RADIUS; x++) {
+                for (int z = -ECHO_HORIZONTAL_RADIUS; z <= ECHO_HORIZONTAL_RADIUS; z++) {
+                    long horizontalDistanceSquared = (long) x * x + (long) z * z;
+                    long verticalDistanceSquared = (long) y * y;
+                    if (horizontalDistanceSquared * verticalRadiusSquared + verticalDistanceSquared * horizontalRadiusSquared <= ellipsoidLimit) {
+                        offsets.add(new BlockPos(x, y, z));
+                    }
+                }
+            }
+        }
+
+        offsets.sort(Comparator
+                .comparingInt(AncientEnchantmentLogic::echoOffsetDistanceSquared)
+                .thenComparingInt(offset -> offset.getY() < 0 ? 1 : 0));
+        return List.copyOf(offsets);
+    }
+
+    private static int echoOffsetDistanceSquared(BlockPos offset) {
+        return offset.getX() * offset.getX() + offset.getY() * offset.getY() + offset.getZ() * offset.getZ();
     }
 
     public static boolean isRelicTradeItem(ItemStack stack) {
@@ -227,6 +260,7 @@ public final class AncientEnchantmentLogic {
         }
 
         updateRelicEfficiencyStreak(player, state);
+        removeEndPortalWhenFrameBreaks(serverWorld, pos, state);
         dropWorldbreakerBlock(serverWorld, player, pos, state, blockEntity);
     }
 
@@ -270,6 +304,52 @@ public final class AncientEnchantmentLogic {
         if (item != net.minecraft.item.Items.AIR) {
             Block.dropStack(world, pos, new ItemStack(item));
         }
+    }
+
+    private static void removeEndPortalWhenFrameBreaks(ServerWorld world, BlockPos framePos, BlockState brokenState) {
+        if (!brokenState.isOf(Blocks.END_PORTAL_FRAME)) {
+            return;
+        }
+
+        ArrayDeque<BlockPos> queue = new ArrayDeque<>();
+        Set<BlockPos> visited = new HashSet<>();
+        BlockPos.Mutable scanPos = new BlockPos.Mutable();
+        for (int y = framePos.getY() - 1; y <= framePos.getY() + 1; y++) {
+            for (int x = framePos.getX() - END_PORTAL_CLEANUP_RADIUS; x <= framePos.getX() + END_PORTAL_CLEANUP_RADIUS; x++) {
+                for (int z = framePos.getZ() - END_PORTAL_CLEANUP_RADIUS; z <= framePos.getZ() + END_PORTAL_CLEANUP_RADIUS; z++) {
+                    scanPos.set(x, y, z);
+                    if (world.getBlockState(scanPos).isOf(Blocks.END_PORTAL)) {
+                        BlockPos seed = scanPos.toImmutable();
+                        queue.add(seed);
+                        visited.add(seed);
+                    }
+                }
+            }
+        }
+
+        int removed = 0;
+        while (!queue.isEmpty() && removed < END_PORTAL_CLEANUP_LIMIT) {
+            BlockPos portalPos = queue.removeFirst();
+            if (!world.getBlockState(portalPos).isOf(Blocks.END_PORTAL)) {
+                continue;
+            }
+
+            world.setBlockState(portalPos, Blocks.AIR.getDefaultState(), Block.NOTIFY_ALL);
+            removed++;
+
+            for (Direction direction : Direction.Type.HORIZONTAL) {
+                BlockPos neighbor = portalPos.offset(direction);
+                if (visited.add(neighbor) && isWithinEndPortalCleanupRange(framePos, neighbor)) {
+                    queue.add(neighbor);
+                }
+            }
+        }
+    }
+
+    private static boolean isWithinEndPortalCleanupRange(BlockPos framePos, BlockPos portalPos) {
+        return Math.abs(portalPos.getX() - framePos.getX()) <= END_PORTAL_CLEANUP_RADIUS
+                && Math.abs(portalPos.getY() - framePos.getY()) <= 1
+                && Math.abs(portalPos.getZ() - framePos.getZ()) <= END_PORTAL_CLEANUP_RADIUS;
     }
 
     private static boolean isValuableBlock(BlockState state) {

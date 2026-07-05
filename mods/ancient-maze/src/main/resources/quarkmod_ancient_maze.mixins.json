@@ -5,6 +5,7 @@
 	"mixins": [
 		"AbstractBlockWorldbreakerMixin",
 		"AnvilScreenHandlerAncientEnchantmentsMixin",
+		"ChunkRegionAncientMazeBedrockMixin",
 		"PlayerEntityAncientPickaxeMixin",
 		"SpawnHelperAncientMazeMixin",
 		"StructureAncientMazeExclusionMixin",

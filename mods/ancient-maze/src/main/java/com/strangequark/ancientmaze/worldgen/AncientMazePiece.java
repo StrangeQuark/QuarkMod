@@ -951,6 +951,22 @@ public final class AncientMazePiece extends StructurePiece {
                 && chunkMinZ <= box.getMaxZ() + margin;
     }
 
+    static boolean footprintContainsColumn(
+            int originX,
+            int originZ,
+            int cellCount,
+            int corridorWidth,
+            int wallThickness,
+            int x,
+            int z
+    ) {
+        BlockBox box = createBoundingBox(originX, 0, originZ, cellCount, corridorWidth, wallThickness, 1, 1);
+        return x >= box.getMinX()
+                && x <= box.getMaxX()
+                && z >= box.getMinZ()
+                && z <= box.getMaxZ();
+    }
+
     private record PlanKey(long mazeSeed, int cellCount, int corridorWidth, int wallThickness) {
     }
 }
