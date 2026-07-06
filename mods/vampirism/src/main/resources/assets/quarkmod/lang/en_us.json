@@ -4,6 +4,8 @@
   "block.quarkmod.coffin.not_vampire": "Only vampires can rest in coffins",
   "entity.quarkmod.vampire": "Vampire",
   "entity.quarkmod.vampiric_bat": "Vampiric Bat",
+  "gamerule.quarkmodStartAsVampire": "Start as Vampire",
+  "gamerule.quarkmodStartAsVampire.description": "New players start as vampires, and new worlds start at midnight.",
   "item.quarkmod.animal_blood_bottle": "Animal Blood Bottle",
   "item.quarkmod.humanoid_blood_bottle": "Humanoid Blood Bottle",
   "item.quarkmod.illager_blood_bottle": "Illager Blood Bottle",
