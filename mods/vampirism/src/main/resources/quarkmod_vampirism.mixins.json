@@ -7,8 +7,10 @@
 		"GoldenAppleVampirePlayerCureMixin",
 		"HostileTargetMixin",
 		"IronGolemEntityVampireTargetMixin",
+		"PlayerManagerStartAsVampireMixin",
 		"PlayerEntityCoffinSleepMixin",
 		"PlayerEntityBatFormDimensionsMixin",
+		"ServerPlayerEntityStartAsVampireMixin",
 		"ServerWorldCoffinSleepMixin",
 		"VillagerHostilesSensorVampireMixin"
 	],

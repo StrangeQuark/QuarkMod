@@ -8,6 +8,8 @@ import com.strangequark.vampirism.vampire.CoffinSleepHandler;
 import com.strangequark.vampirism.vampire.BloodFeeding;
 import com.strangequark.vampirism.vampire.PlayerBatForm;
 import com.strangequark.vampirism.vampire.VampireData;
+import com.strangequark.vampirism.vampire.VampireStartingEvents;
+import com.strangequark.vampirism.vampire.VampirismGameRules;
 import net.fabricmc.api.ModInitializer;
 import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
@@ -24,7 +26,9 @@ public class VampirismMod implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        VampirismGameRules.register();
         VampireData.register();
+        VampireStartingEvents.register();
         CoffinSleepHandler.register();
         PlayerBatForm.register();
         ModEntities.registerModEntities();
