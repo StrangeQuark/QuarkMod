@@ -22,7 +22,9 @@ import net.minecraft.entity.EntityType;
 import net.minecraft.entity.SpawnReason;
 import net.minecraft.entity.decoration.ItemFrameEntity;
 import net.minecraft.entity.passive.VillagerEntity;
+import net.minecraft.inventory.Inventory;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.loot.LootTable;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.RegistryKey;
@@ -431,25 +433,41 @@ public final class AncientMazePiece extends StructurePiece {
         }
 
         int livingY = upperFloorY + 1;
-        placeIfInChunk(world, chunkBox, pos, centerX + 3, livingY, centerZ + 3,
-                Blocks.RED_BED.getDefaultState().with(HorizontalFacingBlock.FACING, Direction.NORTH).with(BedBlock.PART, BedPart.FOOT));
-        placeIfInChunk(world, chunkBox, pos, centerX + 3, livingY, centerZ + 2,
-                Blocks.RED_BED.getDefaultState().with(HorizontalFacingBlock.FACING, Direction.NORTH).with(BedBlock.PART, BedPart.HEAD));
+        for (int x = centerX - TOWER_WEST_SPAN + 1; x <= centerX + TOWER_EAST_SPAN - 1; x++) {
+            for (int z = centerZ - TOWER_NORTH_SPAN + 1; z <= centerZ + TOWER_SOUTH_SPAN - 1; z++) {
+                if (x == centerX - TOWER_WEST_SPAN + 1 && z == centerZ + 3) {
+                    continue;
+                }
+                placeIfInChunk(world, chunkBox, pos, x, livingY, z, towerLivingRoomCarpetState(x, z, centerX, centerZ));
+            }
+        }
 
-        placeIfInChunk(world, chunkBox, pos, centerX + 4, livingY, centerZ - 4,
-                Blocks.CHEST.getDefaultState().with(ChestBlock.FACING, Direction.WEST));
+        placeIfInChunk(world, chunkBox, pos, centerX - 1, livingY, centerZ + 4,
+                Blocks.RED_BED.getDefaultState().with(HorizontalFacingBlock.FACING, Direction.EAST).with(BedBlock.PART, BedPart.FOOT));
+        placeIfInChunk(world, chunkBox, pos, centerX, livingY, centerZ + 4,
+                Blocks.RED_BED.getDefaultState().with(HorizontalFacingBlock.FACING, Direction.EAST).with(BedBlock.PART, BedPart.HEAD));
+        placeIfInChunk(world, chunkBox, pos, centerX - 2, livingY, centerZ + 4, Blocks.POLISHED_DEEPSLATE.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX - 2, livingY + 1, centerZ + 4,
+                Blocks.CANDLE.getDefaultState().with(CandleBlock.CANDLES, 2).with(CandleBlock.LIT, true));
+        placeIfInChunk(world, chunkBox, pos, centerX + 1, livingY, centerZ + 4, Blocks.POLISHED_DEEPSLATE.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX + 1, livingY + 1, centerZ + 4, Blocks.POTTED_WITHER_ROSE.getDefaultState());
+
+        placeTowerChest(world, chunkBox, pos, centerX + 4, livingY, centerZ - 4,
+                Blocks.CHEST.getDefaultState().with(ChestBlock.FACING, Direction.WEST), true);
         placeIfInChunk(world, chunkBox, pos, centerX + 4, livingY, centerZ - 3, Blocks.CRAFTING_TABLE.getDefaultState());
         placeIfInChunk(world, chunkBox, pos, centerX + 4, livingY, centerZ - 2,
                 Blocks.FURNACE.getDefaultState().with(HorizontalFacingBlock.FACING, Direction.WEST));
-        placeIfInChunk(world, chunkBox, pos, centerX + 4, livingY, centerZ - 1,
-                Blocks.TRAPPED_CHEST.getDefaultState().with(ChestBlock.FACING, Direction.WEST));
+        placeTowerChest(world, chunkBox, pos, centerX + 4, livingY, centerZ - 1,
+                Blocks.TRAPPED_CHEST.getDefaultState().with(ChestBlock.FACING, Direction.WEST), false);
 
         placeIfInChunk(world, chunkBox, pos, centerX - 4, livingY, centerZ - 4, Blocks.BOOKSHELF.getDefaultState());
         placeIfInChunk(world, chunkBox, pos, centerX - 3, livingY, centerZ - 4, Blocks.CHISELED_BOOKSHELF.getDefaultState());
         placeIfInChunk(world, chunkBox, pos, centerX - 2, livingY, centerZ - 4, Blocks.BOOKSHELF.getDefaultState());
         placeIfInChunk(world, chunkBox, pos, centerX - 1, livingY, centerZ - 4, Blocks.CHISELED_BOOKSHELF.getDefaultState());
         placeIfInChunk(world, chunkBox, pos, centerX, livingY, centerZ - 4, Blocks.BOOKSHELF.getDefaultState());
-        placeIfInChunk(world, chunkBox, pos, centerX + 1, livingY, centerZ - 4, Blocks.POTTED_WITHER_ROSE.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX + 1, livingY, centerZ - 4, Blocks.POLISHED_DEEPSLATE.getDefaultState());
+        placeIfInChunk(world, chunkBox, pos, centerX + 1, livingY + 1, centerZ - 4,
+                Blocks.CANDLE.getDefaultState().with(CandleBlock.CANDLES, 1).with(CandleBlock.LIT, true));
 
         placeIfInChunk(world, chunkBox, pos, centerX - 4, livingY, centerZ, Blocks.ANVIL.getDefaultState());
         placeIfInChunk(world, chunkBox, pos, centerX - 1, livingY, centerZ, Blocks.POLISHED_DEEPSLATE.getDefaultState());
@@ -458,19 +476,83 @@ public final class AncientMazePiece extends StructurePiece {
         placeIfInChunk(world, chunkBox, pos, centerX - 1, livingY, centerZ + 1,
                 Blocks.DARK_OAK_STAIRS.getDefaultState().with(StairsBlock.FACING, Direction.NORTH));
 
-        placeIfInChunk(world, chunkBox, pos, centerX, livingY, centerZ - 1, Blocks.GRAY_CARPET.getDefaultState());
-        placeIfInChunk(world, chunkBox, pos, centerX + 1, livingY, centerZ - 1, Blocks.GRAY_CARPET.getDefaultState());
-        placeIfInChunk(world, chunkBox, pos, centerX, livingY, centerZ, Blocks.BLACK_CARPET.getDefaultState());
-        placeIfInChunk(world, chunkBox, pos, centerX + 1, livingY, centerZ, Blocks.GRAY_CARPET.getDefaultState());
-        placeIfInChunk(world, chunkBox, pos, centerX, livingY, centerZ + 1, Blocks.GRAY_CARPET.getDefaultState());
-        placeIfInChunk(world, chunkBox, pos, centerX + 1, livingY, centerZ + 1, Blocks.BLACK_CARPET.getDefaultState());
-
         placeIfInChunk(world, chunkBox, pos, centerX - 5, livingY, centerZ - 2, Blocks.SOUL_LANTERN.getDefaultState());
         placeIfInChunk(world, chunkBox, pos, centerX + 3, livingY, centerZ - 4, Blocks.LANTERN.getDefaultState());
         placeIfInChunk(world, chunkBox, pos, centerX - 4, livingY, centerZ + 4, Blocks.LANTERN.getDefaultState());
         placeIfInChunk(world, chunkBox, pos, centerX + 2, livingY, centerZ + 4, Blocks.SOUL_LANTERN.getDefaultState());
         placeIfInChunk(world, chunkBox, pos, centerX, towerTopY, centerZ - TOWER_NORTH_SPAN, Blocks.SOUL_LANTERN.getDefaultState());
         placeIfInChunk(world, chunkBox, pos, centerX, towerTopY, centerZ + TOWER_SOUTH_SPAN, Blocks.SOUL_LANTERN.getDefaultState());
+    }
+
+    private static BlockState towerLivingRoomCarpetState(int x, int z, int centerX, int centerZ) {
+        int dx = x - centerX;
+        int dz = z - centerZ;
+        if ((Math.abs(dx) <= 1 && Math.abs(dz) <= 1) || (dx == 0 && Math.abs(dz) <= 3)) {
+            return Blocks.BLACK_CARPET.getDefaultState();
+        }
+        if (Math.floorMod(dx * 19 + dz * 13, 7) == 0) {
+            return Blocks.CYAN_CARPET.getDefaultState();
+        }
+        return Blocks.GRAY_CARPET.getDefaultState();
+    }
+
+    private void placeTowerChest(
+            StructureWorldAccess world,
+            BlockBox chunkBox,
+            BlockPos.Mutable pos,
+            int x,
+            int y,
+            int z,
+            BlockState state,
+            boolean pantry
+    ) {
+        if (!chunkBox.contains(x, y, z)) {
+            return;
+        }
+
+        world.setBlockState(pos.set(x, y, z), state, Block.NOTIFY_LISTENERS | Block.FORCE_STATE);
+        BlockEntity blockEntity = world.getBlockEntity(pos);
+        if (blockEntity instanceof Inventory inventory) {
+            if (pantry) {
+                fillTowerPantryChest(inventory);
+            } else {
+                fillTowerStudyChest(inventory);
+            }
+        }
+    }
+
+    private static void fillTowerPantryChest(Inventory inventory) {
+        inventory.clear();
+        setTowerChestStack(inventory, 1, new ItemStack(Items.BREAD, 6));
+        setTowerChestStack(inventory, 3, new ItemStack(Items.BAKED_POTATO, 5));
+        setTowerChestStack(inventory, 5, new ItemStack(Items.APPLE, 3));
+        setTowerChestStack(inventory, 10, new ItemStack(Items.TORCH, 16));
+        setTowerChestStack(inventory, 12, new ItemStack(Items.CANDLE, 6));
+        setTowerChestStack(inventory, 14, new ItemStack(Items.COAL, 8));
+        setTowerChestStack(inventory, 21, new ItemStack(Items.GLASS_BOTTLE, 4));
+        setTowerChestStack(inventory, 23, new ItemStack(Items.LANTERN, 1));
+        inventory.markDirty();
+    }
+
+    private static void fillTowerStudyChest(Inventory inventory) {
+        inventory.clear();
+        setTowerChestStack(inventory, 0, new ItemStack(Items.WRITABLE_BOOK, 1));
+        setTowerChestStack(inventory, 2, new ItemStack(Items.BOOK, 4));
+        setTowerChestStack(inventory, 4, new ItemStack(Items.PAPER, 12));
+        setTowerChestStack(inventory, 6, new ItemStack(Items.INK_SAC, 2));
+        setTowerChestStack(inventory, 8, new ItemStack(Items.FEATHER, 1));
+        setTowerChestStack(inventory, 11, new ItemStack(Items.AMETHYST_SHARD, 3));
+        setTowerChestStack(inventory, 13, new ItemStack(Items.SCULK, 6));
+        setTowerChestStack(inventory, 15, new ItemStack(Items.SCULK_VEIN, 8));
+        setTowerChestStack(inventory, 17, new ItemStack(Items.ECHO_SHARD, 1));
+        setTowerChestStack(inventory, 22, new ItemStack(Items.COMPASS, 1));
+        inventory.markDirty();
+    }
+
+    private static void setTowerChestStack(Inventory inventory, int slot, ItemStack stack) {
+        if (slot < inventory.size()) {
+            inventory.setStack(slot, stack);
+        }
     }
 
     private void spawnVillager(StructureWorldAccess world, BlockBox chunkBox, int x, int y, int z) {
