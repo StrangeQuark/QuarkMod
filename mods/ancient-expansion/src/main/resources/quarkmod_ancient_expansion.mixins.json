@@ -1,0 +1,17 @@
+{
+	"required": true,
+	"package": "com.strangequark.ancientexpansion.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"mixins": [
+		"AbstractBlockWorldbreakerMixin",
+		"AnvilScreenHandlerAncientEnchantmentsMixin",
+		"ChunkRegionAncientMazeBedrockMixin",
+		"PlayerEntityAncientPickaxeMixin",
+		"SpawnHelperAncientMazeMixin",
+		"StructureAncientMazeExclusionMixin",
+		"VillagerEntityAncientMazeTradeMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}
