@@ -8,12 +8,15 @@ import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
+import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.block.entity.MobSpawnerBlockEntity;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.SpawnEggItem;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.entry.RegistryEntry;
@@ -254,7 +257,7 @@ public final class AncientEnchantmentLogic {
         return stack.isOf(ModItems.ANCIENT_RELIC);
     }
 
-    private static void afterBlockBreak(World world, PlayerEntity player, BlockPos pos, BlockState state, @Nullable net.minecraft.block.entity.BlockEntity blockEntity) {
+    private static void afterBlockBreak(World world, PlayerEntity player, BlockPos pos, BlockState state, @Nullable BlockEntity blockEntity) {
         if (!(world instanceof ServerWorld serverWorld)) {
             return;
         }
@@ -285,7 +288,7 @@ public final class AncientEnchantmentLogic {
             PlayerEntity player,
             BlockPos pos,
             BlockState state,
-            @Nullable net.minecraft.block.entity.BlockEntity blockEntity
+            @Nullable BlockEntity blockEntity
     ) {
         ItemStack stack = player.getMainHandStack();
         if (!ModItems.isAncientPickaxe(stack)
@@ -293,6 +296,10 @@ public final class AncientEnchantmentLogic {
                 || !canWorldbreak(player, state)
                 || player.shouldSkipBlockDrops()) {
             return;
+        }
+
+        if (state.isOf(Blocks.SPAWNER)) {
+            dropSpawnerSpawnEgg(world, pos, blockEntity);
         }
 
         List<ItemStack> vanillaDrops = Block.getDroppedStacks(state, world, pos, blockEntity, player, stack);
@@ -303,6 +310,22 @@ public final class AncientEnchantmentLogic {
         Item item = state.getBlock().asItem();
         if (item != net.minecraft.item.Items.AIR) {
             Block.dropStack(world, pos, new ItemStack(item));
+        }
+    }
+
+    private static void dropSpawnerSpawnEgg(ServerWorld world, BlockPos pos, @Nullable BlockEntity blockEntity) {
+        if (!(blockEntity instanceof MobSpawnerBlockEntity spawnerBlockEntity)) {
+            return;
+        }
+
+        Entity renderedEntity = spawnerBlockEntity.getLogic().getRenderedEntity(world, pos);
+        if (renderedEntity == null) {
+            return;
+        }
+
+        SpawnEggItem spawnEgg = SpawnEggItem.forEntity(renderedEntity.getType());
+        if (spawnEgg != null) {
+            Block.dropStack(world, pos, new ItemStack(spawnEgg));
         }
     }
 
