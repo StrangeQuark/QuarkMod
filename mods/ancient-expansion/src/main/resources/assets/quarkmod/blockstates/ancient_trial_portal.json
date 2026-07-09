@@ -1,0 +1,11 @@
+{
+  "variants": {
+    "axis=x": {
+      "model": "quarkmod:block/ancient_trial_portal"
+    },
+    "axis=z": {
+      "model": "quarkmod:block/ancient_trial_portal",
+      "y": 90
+    }
+  }
+}
