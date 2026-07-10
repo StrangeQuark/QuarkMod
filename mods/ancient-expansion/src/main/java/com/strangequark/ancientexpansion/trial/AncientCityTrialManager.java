@@ -2,6 +2,8 @@ package com.strangequark.ancientexpansion.trial;
 
 import com.strangequark.ancientexpansion.AncientExpansionMod;
 import com.strangequark.ancientexpansion.block.ModBlocks;
+import com.strangequark.ancientexpansion.mixin.MobEntityGoalSelectorAccessor;
+import com.strangequark.ancientexpansion.mixin.PhantomEntityAccessor;
 import com.strangequark.ancientexpansion.worldgen.AncientCityTrialAltarPlacement;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -13,10 +15,14 @@ import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.ChestBlockEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.SpawnReason;
+import net.minecraft.entity.ai.goal.Goal;
 import net.minecraft.entity.attribute.EntityAttributeInstance;
 import net.minecraft.entity.attribute.EntityAttributes;
+import net.minecraft.entity.mob.GhastEntity;
 import net.minecraft.entity.mob.MobEntity;
+import net.minecraft.entity.mob.PhantomEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtList;
@@ -28,6 +34,7 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
+import net.minecraft.text.MutableText;
 import net.minecraft.structure.StructureContext;
 import net.minecraft.structure.StructurePiece;
 import net.minecraft.structure.StructurePiecesList;
@@ -44,7 +51,9 @@ import net.minecraft.world.TeleportTarget;
 import net.minecraft.world.World;
 import net.minecraft.world.gen.chunk.ChunkGenerator;
 
+import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -57,7 +66,7 @@ public final class AncientCityTrialManager {
     private static final int MAX_WAVES = 3;
     private static final int WAVE_SETTLE_TICKS = 20;
     private static final int NEXT_WAVE_DELAY_TICKS = 40;
-    private static final int INSTANCE_SPACING = 512;
+    private static final int INSTANCE_SPACING = 8192;
     private static final int INSTANCE_COLUMNS = 128;
     private static final int INSTANCE_ORIGIN_X = 0;
     private static final int INSTANCE_ORIGIN_Z = 0;
@@ -67,10 +76,17 @@ public final class AncientCityTrialManager {
     private static final int PLATFORM_Y_RAISE = 13;
     private static final int CLEAR_VERTICAL_PADDING = 24;
     private static final int SPAWN_ATTEMPTS = 96;
-    private static final int TRIAL_MOB_RETARGET_TICKS = 10;
-    private static final double TRIAL_MOB_FOLLOW_RANGE = 256.0D;
-    private static final double TRIAL_MOB_NAVIGATION_SPEED = 1.25D;
+    private static final int TRIAL_STATUS_TICKS = 20;
+    private static final int TRIAL_GHAST_APPROACH_GOAL_PRIORITY = 4;
+    private static final int TRIAL_PHANTOM_APPROACH_GOAL_PRIORITY = 0;
+    private static final int TRIAL_PHANTOM_CIRCLING_HEIGHT = 20;
+    private static final double TRIAL_GHAST_APPROACH_HEIGHT = 6.0D;
+    private static final double TRIAL_MOB_MIN_FOLLOW_RANGE = 256.0D;
+    private static final double TRIAL_MOB_FOLLOW_RANGE_PADDING = 32.0D;
     private static final int BULK_BLOCK_FLAGS = Block.NOTIFY_LISTENERS | Block.FORCE_STATE | Block.SKIP_DROPS;
+    private static final List<WaveSpawn> WAVE_ONE = List.of(
+            new WaveSpawn(EntityType.ZOMBIE, 50, false)
+    );
     private static final List<WaveSpawn> WAVE_TWO = List.of(
             new WaveSpawn(EntityType.ZOMBIE, 10, false),
             new WaveSpawn(EntityType.SKELETON, 10, false),
@@ -150,10 +166,11 @@ public final class AncientCityTrialManager {
     private static void handleActiveTrialPortal(ServerPlayerEntity player, BlockPos portalPos, TrialInstance trial) {
         if (player.getWorld() == trial.world && trial.completed && trial.exitPortalPositions.contains(portalPos)) {
             AncientCityTrialPortal.clearConnectedPortal(trial.world, portalPos);
-            removeTrialMobs(trial);
-            ACTIVE_TRIALS.remove(player.getUuid());
             ServerPlayerEntity teleported = teleport(player, trial.returnWorld, trial.returnSpawn.toBottomCenterPos(), player.getYaw(), player.getPitch());
             teleported.playSoundToPlayer(SoundEvents.BLOCK_PORTAL_TRAVEL, SoundCategory.PLAYERS, 0.65F, 1.0F);
+            if (teleported.getWorld() == trial.returnWorld) {
+                endTrial(player.getUuid(), trial);
+            }
             return;
         }
 
@@ -178,7 +195,8 @@ public final class AncientCityTrialManager {
             }
 
             keepPlayerInTrial(player, trial);
-            int livingTrialMobs = retargetTrialMobs(trial, player);
+            TrialMobStatus mobStatus = retargetTrialMobs(trial, player);
+            displayTrialStatus(player, trial, mobStatus);
             if (trial.completed) {
                 continue;
             }
@@ -188,7 +206,7 @@ public final class AncientCityTrialManager {
                 continue;
             }
 
-            if (livingTrialMobs > 0) {
+            if (mobStatus.total() > 0) {
                 trial.nextWaveDelayTicks = NEXT_WAVE_DELAY_TICKS;
                 continue;
             }
@@ -265,30 +283,35 @@ public final class AncientCityTrialManager {
     }
 
     private static void abandonTrial(UUID playerUuid) {
-        TrialInstance trial = ACTIVE_TRIALS.remove(playerUuid);
+        TrialInstance trial = ACTIVE_TRIALS.get(playerUuid);
         if (trial != null) {
-            removeTrialMobs(trial);
+            endTrial(playerUuid, trial);
         }
     }
 
     private static void endTrial(UUID playerUuid, TrialInstance trial) {
-        ACTIVE_TRIALS.remove(playerUuid);
-        removeTrialMobs(trial);
+        if (ACTIVE_TRIALS.remove(playerUuid, trial)) {
+            removeTrialMobs(trial);
+            clearTrialBuild(trial);
+        }
     }
 
     private static void spawnNextWave(TrialInstance trial, ServerPlayerEntity player) {
         trial.currentWave++;
         Random random = Random.create(trial.world.getSeed() ^ ((long) trial.instanceIndex << 32) ^ trial.currentWave ^ trial.world.getTime());
-        if (trial.currentWave == 1) {
-            spawnWaveEntry(trial, player, new WaveSpawn(EntityType.ZOMBIE, 50, false), random);
-        } else if (trial.currentWave == 2) {
-            spawnWaveEntries(trial, player, WAVE_TWO, random);
-        } else if (trial.currentWave == 3) {
-            spawnWaveEntries(trial, player, WAVE_THREE, random);
-        }
+        spawnWaveEntries(trial, player, getWaveSpawns(trial.currentWave), random);
         trial.waveSettleTicks = WAVE_SETTLE_TICKS;
         trial.nextWaveDelayTicks = NEXT_WAVE_DELAY_TICKS;
         player.sendMessage(Text.translatable("message.quarkmod.ancient_trial_wave", trial.currentWave, MAX_WAVES), true);
+    }
+
+    private static List<WaveSpawn> getWaveSpawns(int wave) {
+        return switch (wave) {
+            case 1 -> WAVE_ONE;
+            case 2 -> WAVE_TWO;
+            case 3 -> WAVE_THREE;
+            default -> List.of();
+        };
     }
 
     private static void spawnWaveEntries(TrialInstance trial, ServerPlayerEntity player, List<WaveSpawn> entries, Random random) {
@@ -318,9 +341,18 @@ public final class AncientCityTrialManager {
         entity.addCommandTag(trial.mobTag);
         if (entity instanceof MobEntity mob) {
             mob.setPersistent();
-            boostTrialMobFollowRange(mob);
-            mob.setTarget(player);
-            mob.setAttacking(true);
+            addTrialFlyingGoal(mob);
+            retargetTrialMob(trial, player, mob);
+        }
+    }
+
+    private static void addTrialFlyingGoal(MobEntity mob) {
+        if (mob instanceof GhastEntity ghast) {
+            ((MobEntityGoalSelectorAccessor) ghast).quarkmod_ancientexpansion$getGoalSelector()
+                    .add(TRIAL_GHAST_APPROACH_GOAL_PRIORITY, new TrialGhastApproachGoal(ghast));
+        } else if (mob instanceof PhantomEntity phantom) {
+            ((MobEntityGoalSelectorAccessor) phantom).quarkmod_ancientexpansion$getGoalSelector()
+                    .add(TRIAL_PHANTOM_APPROACH_GOAL_PRIORITY, new TrialPhantomApproachGoal(phantom));
         }
     }
 
@@ -350,30 +382,75 @@ public final class AncientCityTrialManager {
         return true;
     }
 
-    private static int retargetTrialMobs(TrialInstance trial, ServerPlayerEntity player) {
+    private static TrialMobStatus retargetTrialMobs(TrialInstance trial, ServerPlayerEntity player) {
         int livingMobs = 0;
-        boolean updateNavigation = trial.world.getTime() % TRIAL_MOB_RETARGET_TICKS == 0L;
+        Map<EntityType<?>, Integer> counts = createMobCountMap(trial.currentWave);
         for (Entity entity : trial.world.iterateEntities()) {
             if (entity != null && entity.isAlive() && entity.getCommandTags().contains(trial.mobTag)) {
                 livingMobs++;
+                counts.merge(entity.getType(), 1, Integer::sum);
                 if (entity instanceof MobEntity mob) {
-                    boostTrialMobFollowRange(mob);
-                    mob.setTarget(player);
-                    mob.setAttacking(true);
-                    if (updateNavigation && mob.squaredDistanceTo(player) > 4.0D) {
-                        mob.getNavigation().startMovingTo(player, TRIAL_MOB_NAVIGATION_SPEED);
-                    }
+                    retargetTrialMob(trial, player, mob);
                 }
             }
         }
-        return livingMobs;
+        return new TrialMobStatus(livingMobs, counts);
     }
 
-    private static void boostTrialMobFollowRange(MobEntity mob) {
-        EntityAttributeInstance followRange = mob.getAttributeInstance(EntityAttributes.FOLLOW_RANGE);
-        if (followRange != null && followRange.getBaseValue() < TRIAL_MOB_FOLLOW_RANGE) {
-            followRange.setBaseValue(TRIAL_MOB_FOLLOW_RANGE);
+    private static void retargetTrialMob(TrialInstance trial, ServerPlayerEntity player, MobEntity mob) {
+        boostTrialMobFollowRange(trial, mob);
+        mob.setTarget(player);
+        mob.setAttacking(true);
+        mob.getLookControl().lookAt(player, 90.0F, 90.0F);
+    }
+
+    private static Map<EntityType<?>, Integer> createMobCountMap(int wave) {
+        Map<EntityType<?>, Integer> counts = new LinkedHashMap<>();
+        for (WaveSpawn spawn : getWaveSpawns(wave)) {
+            counts.putIfAbsent(spawn.entityType(), 0);
         }
+        return counts;
+    }
+
+    private static void displayTrialStatus(ServerPlayerEntity player, TrialInstance trial, TrialMobStatus status) {
+        if (trial.completed || trial.world.getTime() % TRIAL_STATUS_TICKS != 0L) {
+            return;
+        }
+
+        MutableText text = Text.literal("Wave " + trial.currentWave + "/" + MAX_WAVES + " | " + status.total() + " left");
+        if (status.total() > 0) {
+            text.append(Text.literal(": "));
+            boolean first = true;
+            for (Map.Entry<EntityType<?>, Integer> entry : status.counts().entrySet()) {
+                int count = entry.getValue();
+                if (count <= 0) {
+                    continue;
+                }
+                if (!first) {
+                    text.append(Text.literal(", "));
+                }
+                text.append(entry.getKey().getName()).append(Text.literal(" x" + count));
+                first = false;
+            }
+        }
+
+        player.sendMessage(text, true);
+    }
+
+    private static void boostTrialMobFollowRange(TrialInstance trial, MobEntity mob) {
+        EntityAttributeInstance followRange = mob.getAttributeInstance(EntityAttributes.FOLLOW_RANGE);
+        double trialFollowRange = getTrialMobFollowRange(trial);
+        if (followRange != null && followRange.getBaseValue() < trialFollowRange) {
+            followRange.setBaseValue(trialFollowRange);
+        }
+    }
+
+    private static double getTrialMobFollowRange(TrialInstance trial) {
+        double width = trial.platformBox.getMaxX() - trial.platformBox.getMinX() + 1.0D;
+        double depth = trial.platformBox.getMaxZ() - trial.platformBox.getMinZ() + 1.0D;
+        double height = Math.max(1.0D, trial.cityBox.getMaxY() - trial.platformTopY + 1.0D);
+        double arenaDiagonal = Math.sqrt(width * width + depth * depth + height * height);
+        return Math.max(TRIAL_MOB_MIN_FOLLOW_RANGE, arenaDiagonal + TRIAL_MOB_FOLLOW_RANGE_PADDING);
     }
 
     private static void completeTrial(ServerPlayerEntity player, TrialInstance trial) {
@@ -394,17 +471,27 @@ public final class AncientCityTrialManager {
     }
 
     private static void buildTrialCity(ServerWorld world, AncientCityTrialPortal.FrameTarget sourceFrame, TrialInstance trial) {
-        BlockBox clearBox = clampBoxVertically(
-                expandBox(trial.cityBox, ISLAND_MARGIN, CLEAR_VERTICAL_PADDING, ISLAND_MARGIN),
-                world.getBottomY(),
-                world.getTopYInclusive()
-        );
+        BlockBox clearBox = getTrialBuildBox(world, trial);
         loadChunks(world, clearBox);
         clearBox(world, clearBox);
         buildPlatform(world, trial);
         generateShiftedAncientCity(world, sourceFrame, trial);
         AncientCityTrialAltarPlacement.buildTrialApproach(world, trial.trialAltarBase, trial.prizeChestFacing);
         prepareStandingSpot(world, trial.trialSpawn);
+    }
+
+    private static void clearTrialBuild(TrialInstance trial) {
+        BlockBox clearBox = getTrialBuildBox(trial.world, trial);
+        loadChunks(trial.world, clearBox);
+        clearBox(trial.world, clearBox);
+    }
+
+    private static BlockBox getTrialBuildBox(ServerWorld world, TrialInstance trial) {
+        return clampBoxVertically(
+                expandBox(trial.cityBox, ISLAND_MARGIN, CLEAR_VERTICAL_PADDING, ISLAND_MARGIN),
+                world.getBottomY(),
+                world.getTopYInclusive()
+        );
     }
 
     private static void clearBox(ServerWorld world, BlockBox box) {
@@ -642,6 +729,93 @@ public final class AncientCityTrialManager {
             this.exitPortalPositions = exitPortalPositions;
             this.mobTag = mobTag;
         }
+    }
+
+    private record TrialMobStatus(int total, Map<EntityType<?>, Integer> counts) {
+    }
+
+    private static final class TrialGhastApproachGoal extends Goal {
+        private final GhastEntity ghast;
+
+        private TrialGhastApproachGoal(GhastEntity ghast) {
+            this.ghast = ghast;
+            setControls(EnumSet.of(Control.MOVE));
+        }
+
+        @Override
+        public boolean canStart() {
+            return hasUsableTarget(ghast);
+        }
+
+        @Override
+        public boolean shouldContinue() {
+            return hasUsableTarget(ghast);
+        }
+
+        @Override
+        public boolean shouldRunEveryTick() {
+            return true;
+        }
+
+        @Override
+        public void tick() {
+            LivingEntity target = ghast.getTarget();
+            if (!isUsableTarget(target)) {
+                return;
+            }
+
+            ghast.getMoveControl().moveTo(
+                    target.getX(),
+                    target.getEyeY() + TRIAL_GHAST_APPROACH_HEIGHT,
+                    target.getZ(),
+                    1.0D
+            );
+            ghast.getLookControl().lookAt(target, 90.0F, 90.0F);
+        }
+    }
+
+    private static final class TrialPhantomApproachGoal extends Goal {
+        private final PhantomEntity phantom;
+
+        private TrialPhantomApproachGoal(PhantomEntity phantom) {
+            this.phantom = phantom;
+        }
+
+        @Override
+        public boolean canStart() {
+            return hasUsableTarget(phantom);
+        }
+
+        @Override
+        public boolean shouldContinue() {
+            return hasUsableTarget(phantom);
+        }
+
+        @Override
+        public boolean shouldRunEveryTick() {
+            return true;
+        }
+
+        @Override
+        public void tick() {
+            LivingEntity target = phantom.getTarget();
+            if (!isUsableTarget(target)) {
+                return;
+            }
+
+            PhantomEntityAccessor accessor = (PhantomEntityAccessor) phantom;
+            accessor.quarkmod_ancientexpansion$setCirclingCenter(target.getBlockPos().up(TRIAL_PHANTOM_CIRCLING_HEIGHT));
+            accessor.quarkmod_ancientexpansion$setTargetPosition(new Vec3d(target.getX(), target.getBodyY(0.5D), target.getZ()));
+            phantom.getLookControl().lookAt(target, 90.0F, 90.0F);
+        }
+    }
+
+    private static boolean hasUsableTarget(MobEntity mob) {
+        return isUsableTarget(mob.getTarget());
+    }
+
+    private static boolean isUsableTarget(LivingEntity target) {
+        return target != null && target.isAlive() && !target.isRemoved();
     }
 
     private record WaveSpawn(EntityType<? extends Entity> entityType, int count, boolean flying) {
