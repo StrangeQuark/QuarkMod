@@ -92,7 +92,7 @@ public final class AncientCityTrialManager {
             new WaveSpawn(EntityType.SKELETON, 10, false),
             new WaveSpawn(EntityType.CREEPER, 10, false),
             new WaveSpawn(EntityType.ENDERMAN, 10, false),
-            new WaveSpawn(EntityType.SPIDER, 10, false),
+            new WaveSpawn(EntityType.CAVE_SPIDER, 10, false),
             new WaveSpawn(EntityType.PHANTOM, 10, true)
     );
     private static final List<WaveSpawn> WAVE_THREE = List.of(
