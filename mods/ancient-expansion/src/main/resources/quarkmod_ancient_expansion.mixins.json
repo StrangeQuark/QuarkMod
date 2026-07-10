@@ -6,7 +6,9 @@
 		"AbstractBlockWorldbreakerMixin",
 		"AnvilScreenHandlerAncientEnchantmentsMixin",
 		"ChunkRegionAncientMazeBedrockMixin",
+		"MobEntityGoalSelectorAccessor",
 		"PlayerEntityAncientPickaxeMixin",
+		"PhantomEntityAccessor",
 		"SpawnHelperAncientMazeMixin",
 		"StructureAncientMazeExclusionMixin",
 		"VillagerEntityAncientMazeTradeMixin"
