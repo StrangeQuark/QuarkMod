@@ -17,12 +17,18 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.SpawnReason;
+import net.minecraft.entity.ai.brain.Brain;
+import net.minecraft.entity.ai.brain.EntityLookTarget;
+import net.minecraft.entity.ai.brain.MemoryModuleType;
+import net.minecraft.entity.ai.brain.WalkTarget;
 import net.minecraft.entity.ai.goal.Goal;
 import net.minecraft.entity.attribute.EntityAttributeInstance;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.mob.GhastEntity;
 import net.minecraft.entity.mob.MobEntity;
 import net.minecraft.entity.mob.PhantomEntity;
+import net.minecraft.entity.mob.WardenEntity;
+import net.minecraft.entity.mob.ZoglinEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtList;
@@ -63,7 +69,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public final class AncientCityTrialManager {
     public static final RegistryKey<World> ANCIENT_TRIAL_WORLD = RegistryKey.of(RegistryKeys.WORLD, AncientExpansionMod.id("ancient_trial"));
-    private static final int MAX_WAVES = 3;
+    private static final int MAX_WAVES = 15;
     private static final int WAVE_SETTLE_TICKS = 20;
     private static final int NEXT_WAVE_DELAY_TICKS = 40;
     private static final int INSTANCE_SPACING = 8192;
@@ -80,22 +86,50 @@ public final class AncientCityTrialManager {
     private static final int TRIAL_GHAST_APPROACH_GOAL_PRIORITY = 4;
     private static final int TRIAL_PHANTOM_APPROACH_GOAL_PRIORITY = 0;
     private static final int TRIAL_PHANTOM_CIRCLING_HEIGHT = 20;
+    private static final long TRIAL_BRAIN_TARGET_MEMORY_TICKS = 200L;
+    private static final float TRIAL_WARDEN_WALK_SPEED = 1.0F;
+    private static final float TRIAL_ZOGLIN_WALK_SPEED = 1.0F;
     private static final double TRIAL_GHAST_APPROACH_HEIGHT = 6.0D;
     private static final double TRIAL_MOB_MIN_FOLLOW_RANGE = 256.0D;
     private static final double TRIAL_MOB_FOLLOW_RANGE_PADDING = 32.0D;
     private static final int BULK_BLOCK_FLAGS = Block.NOTIFY_LISTENERS | Block.FORCE_STATE | Block.SKIP_DROPS;
     private static final List<WaveSpawn> WAVE_ONE = List.of(
-            new WaveSpawn(EntityType.ZOMBIE, 50, false)
+            new WaveSpawn(EntityType.ZOMBIE, 10, false)
     );
     private static final List<WaveSpawn> WAVE_TWO = List.of(
+            new WaveSpawn(EntityType.SKELETON, 10, false)
+    );
+    private static final List<WaveSpawn> WAVE_THREE = List.of(
+            new WaveSpawn(EntityType.CREEPER, 10, false)
+    );
+    private static final List<WaveSpawn> WAVE_FOUR = List.of(
+            new WaveSpawn(EntityType.ZOMBIE, 10, false),
+            new WaveSpawn(EntityType.SKELETON, 10, false),
+            new WaveSpawn(EntityType.CREEPER, 10, false)
+    );
+    private static final List<WaveSpawn> WAVE_FIVE = List.of(
+            new WaveSpawn(EntityType.CAVE_SPIDER, 20, false)
+    );
+    private static final List<WaveSpawn> WAVE_SIX = List.of(
+            new WaveSpawn(EntityType.ENDERMAN, 10, false)
+    );
+    private static final List<WaveSpawn> WAVE_SEVEN = List.of(
             new WaveSpawn(EntityType.ZOMBIE, 10, false),
             new WaveSpawn(EntityType.SKELETON, 10, false),
             new WaveSpawn(EntityType.CREEPER, 10, false),
             new WaveSpawn(EntityType.ENDERMAN, 10, false),
             new WaveSpawn(EntityType.CAVE_SPIDER, 10, false),
-            new WaveSpawn(EntityType.PHANTOM, 10, true)
+            new WaveSpawn(EntityType.PHANTOM, 10, true),
+            new WaveSpawn(EntityType.WITCH, 10, false)
     );
-    private static final List<WaveSpawn> WAVE_THREE = List.of(
+    private static final List<WaveSpawn> WAVE_EIGHT = List.of(
+            new WaveSpawn(EntityType.EVOKER, 10, false),
+            new WaveSpawn(EntityType.ILLUSIONER, 10, false),
+            new WaveSpawn(EntityType.VINDICATOR, 10, false),
+            new WaveSpawn(EntityType.PILLAGER, 20, false),
+            new WaveSpawn(EntityType.RAVAGER, 5, false)
+    );
+    private static final List<WaveSpawn> WAVE_NINE = List.of(
             new WaveSpawn(EntityType.BLAZE, 10, true),
             new WaveSpawn(EntityType.GHAST, 10, true),
             new WaveSpawn(EntityType.HOGLIN, 10, false),
@@ -106,6 +140,18 @@ public final class AncientCityTrialManager {
             new WaveSpawn(EntityType.ZOGLIN, 10, false),
             new WaveSpawn(EntityType.ZOMBIFIED_PIGLIN, 10, false)
     );
+    private static final List<WaveSpawn> WAVE_TEN = List.of(
+            new WaveSpawn(EntityType.BREEZE, 5, false)
+    );
+    private static final List<WaveSpawn> WAVE_ELEVEN = List.of(
+            new WaveSpawn(EntityType.WARDEN, 1, false)
+    );
+    private static final List<WaveSpawn> WAVE_TWELVE = List.of(
+            new WaveSpawn(EntityType.WITHER, 1, true)
+    );
+    private static final List<WaveSpawn> WAVE_THIRTEEN = concat(WAVE_SEVEN, WAVE_EIGHT, WAVE_NINE);
+    private static final List<WaveSpawn> WAVE_FOURTEEN = concat(WAVE_ELEVEN, WAVE_TWELVE, WAVE_TEN);
+    private static final List<WaveSpawn> WAVE_FIFTEEN = concat(WAVE_THIRTEEN, WAVE_FOURTEEN);
     private static final Map<UUID, TrialInstance> ACTIVE_TRIALS = new HashMap<>();
     private static final AtomicInteger NEXT_INSTANCE_INDEX = new AtomicInteger();
 
@@ -310,8 +356,27 @@ public final class AncientCityTrialManager {
             case 1 -> WAVE_ONE;
             case 2 -> WAVE_TWO;
             case 3 -> WAVE_THREE;
+            case 4 -> WAVE_FOUR;
+            case 5 -> WAVE_FIVE;
+            case 6 -> WAVE_SIX;
+            case 7 -> WAVE_SEVEN;
+            case 8 -> WAVE_EIGHT;
+            case 9 -> WAVE_NINE;
+            case 10 -> WAVE_TEN;
+            case 11 -> WAVE_ELEVEN;
+            case 12 -> WAVE_TWELVE;
+            case 13 -> WAVE_THIRTEEN;
+            case 14 -> WAVE_FOURTEEN;
+            case 15 -> WAVE_FIFTEEN;
             default -> List.of();
         };
+    }
+
+    @SafeVarargs
+    private static List<WaveSpawn> concat(List<WaveSpawn>... waves) {
+        return java.util.stream.Stream.of(waves)
+                .flatMap(List::stream)
+                .toList();
     }
 
     private static void spawnWaveEntries(TrialInstance trial, ServerPlayerEntity player, List<WaveSpawn> entries, Random random) {
@@ -399,9 +464,38 @@ public final class AncientCityTrialManager {
 
     private static void retargetTrialMob(TrialInstance trial, ServerPlayerEntity player, MobEntity mob) {
         boostTrialMobFollowRange(trial, mob);
+        if (mob instanceof ZoglinEntity zoglin) {
+            retargetTrialZoglin(zoglin, player);
+            return;
+        }
+        if (mob instanceof WardenEntity warden) {
+            retargetTrialWarden(warden, player);
+            return;
+        }
+
         mob.setTarget(player);
         mob.setAttacking(true);
         mob.getLookControl().lookAt(player, 90.0F, 90.0F);
+    }
+
+    private static void retargetTrialZoglin(ZoglinEntity zoglin, ServerPlayerEntity player) {
+        Brain<ZoglinEntity> brain = zoglin.getBrain();
+        brain.forget(MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE);
+        brain.remember(MemoryModuleType.ATTACK_TARGET, player, TRIAL_BRAIN_TARGET_MEMORY_TICKS);
+        brain.remember(MemoryModuleType.LOOK_TARGET, new EntityLookTarget(player, true), TRIAL_BRAIN_TARGET_MEMORY_TICKS);
+        brain.remember(MemoryModuleType.WALK_TARGET, new WalkTarget(player, TRIAL_ZOGLIN_WALK_SPEED, 1), TRIAL_BRAIN_TARGET_MEMORY_TICKS);
+        zoglin.setAttacking(true);
+        zoglin.getLookControl().lookAt(player, 90.0F, 90.0F);
+    }
+
+    private static void retargetTrialWarden(WardenEntity warden, ServerPlayerEntity player) {
+        warden.updateAttackTarget(player);
+        Brain<WardenEntity> brain = warden.getBrain();
+        brain.forget(MemoryModuleType.CANT_REACH_WALK_TARGET_SINCE);
+        brain.remember(MemoryModuleType.LOOK_TARGET, new EntityLookTarget(player, true), TRIAL_BRAIN_TARGET_MEMORY_TICKS);
+        brain.remember(MemoryModuleType.WALK_TARGET, new WalkTarget(player, TRIAL_WARDEN_WALK_SPEED, 1), TRIAL_BRAIN_TARGET_MEMORY_TICKS);
+        warden.setAttacking(true);
+        warden.getLookControl().lookAt(player, 90.0F, 90.0F);
     }
 
     private static Map<EntityType<?>, Integer> createMobCountMap(int wave) {
