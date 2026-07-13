@@ -4,16 +4,19 @@ import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.platform.DepthTestFunction;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.strangequark.ancientexpansion.AncientExpansionMod;
+import com.strangequark.ancientexpansion.block.ModBlocks;
 import com.strangequark.ancientexpansion.network.EchoProspectorPayload;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.client.rendering.v1.BlockRenderLayerMap;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.gl.RenderPipelines;
+import net.minecraft.client.render.BlockRenderLayer;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BuiltBuffer;
 import net.minecraft.client.render.RenderLayer;
@@ -44,6 +47,7 @@ public final class AncientMazeClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        BlockRenderLayerMap.putBlocks(BlockRenderLayer.CUTOUT, ModBlocks.ANCIENT_FIRE);
         ClientPlayNetworking.registerGlobalReceiver(
                 EchoProspectorPayload.ID,
                 (payload, context) -> context.client().execute(() -> showEchoHighlights(payload.positions()))

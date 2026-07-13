@@ -7,7 +7,6 @@ import com.strangequark.ancientexpansion.loot.AncientExpansionLootTables;
 import com.strangequark.ancientexpansion.network.EchoProspectorPayload;
 import com.strangequark.ancientexpansion.trial.AncientCityTrialManager;
 import com.strangequark.ancientexpansion.village.AncientMazeVillagers;
-import com.strangequark.ancientexpansion.worldgen.AncientCityTrialAltarPlacement;
 import com.strangequark.ancientexpansion.worldgen.ModStructurePieces;
 import com.strangequark.ancientexpansion.worldgen.ModStructureTypes;
 import net.fabricmc.api.ModInitializer;
@@ -34,7 +33,6 @@ public final class AncientExpansionMod implements ModInitializer {
         AncientMazeVillagers.register();
         AncientEnchantmentLogic.register();
         AncientCityTrialManager.register();
-        AncientCityTrialAltarPlacement.register();
         ModStructurePieces.registerStructurePieces();
         ModStructureTypes.registerStructureTypes();
         LOGGER.info("QuarkMod Ancient Expansion init success");

@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "quarkmod:item/ancient_token"
+    "model": "minecraft:item/flint_and_steel"
   }
 }
