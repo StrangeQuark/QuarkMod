@@ -26,7 +26,7 @@ public final class AncientExpansionLootTables {
                 tableBuilder.pool(LootPool.builder()
                         .rolls(ConstantLootNumberProvider.create(1.0F))
                         .conditionally(RandomChanceLootCondition.builder(0.5F))
-                        .with(ItemEntry.builder(ModItems.ANCIENT_TOKEN)));
+                        .with(ItemEntry.builder(ModItems.ANCIENT_FLINT_AND_STEEL)));
             }
         });
     }

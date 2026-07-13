@@ -4,7 +4,6 @@ import com.strangequark.ancientexpansion.AncientExpansionMod;
 import com.strangequark.ancientexpansion.block.ModBlocks;
 import com.strangequark.ancientexpansion.mixin.MobEntityGoalSelectorAccessor;
 import com.strangequark.ancientexpansion.mixin.PhantomEntityAccessor;
-import com.strangequark.ancientexpansion.worldgen.AncientCityTrialAltarPlacement;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.block.Block;
@@ -294,8 +293,8 @@ public final class AncientCityTrialManager {
                 .map(pos -> pos.add(offsetX, offsetY, offsetZ))
                 .toList();
         BlockPos trialSpawn = trialAltarBase.offset(sourceFrame.portalFrontDirection(), 2).up();
-        BlockPos prizeChestPos = AncientCityTrialAltarPlacement.getAltarBlockPos(trialAltarBase);
-        BlockPos returnSpawn = AncientCityTrialAltarPlacement.getAltarBlockPos(sourceFrame.altarPos()).up();
+        BlockPos prizeChestPos = trialAltarBase.up();
+        BlockPos returnSpawn = sourceFrame.altarPos().up(2);
 
         return new TrialInstance(
                 trialWorld,
@@ -570,7 +569,6 @@ public final class AncientCityTrialManager {
         clearBox(world, clearBox);
         buildPlatform(world, trial);
         generateShiftedAncientCity(world, sourceFrame, trial);
-        AncientCityTrialAltarPlacement.buildTrialApproach(world, trial.trialAltarBase, trial.prizeChestFacing);
         prepareStandingSpot(world, trial.trialSpawn);
     }
 

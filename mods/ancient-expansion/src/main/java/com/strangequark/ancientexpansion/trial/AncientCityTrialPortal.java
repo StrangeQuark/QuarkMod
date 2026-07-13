@@ -48,11 +48,24 @@ public final class AncientCityTrialPortal {
             return ActivationResult.NO_FRAME;
         }
 
-        if (isPortalActive(world, target.get())) {
+        return activateFrame(world, target.get());
+    }
+
+    public static ActivationResult activateFrameAt(ServerWorld world, BlockPos interactionPos) {
+        Optional<FrameTarget> target = findNearestFrame(world, interactionPos);
+        if (target.isEmpty() || !isPortalInteractionPos(target.get(), interactionPos)) {
+            return ActivationResult.NO_FRAME;
+        }
+
+        return activateFrame(world, target.get());
+    }
+
+    private static ActivationResult activateFrame(ServerWorld world, FrameTarget target) {
+        if (isPortalActive(world, target)) {
             return ActivationResult.ALREADY_ACTIVE;
         }
 
-        placePortal(world, target.get().portalPositions(), target.get().portalAxis());
+        placePortal(world, target.portalPositions(), target.portalAxis());
         return ActivationResult.ACTIVATED;
     }
 
@@ -128,6 +141,15 @@ public final class AncientCityTrialPortal {
     private static boolean isPortalActive(ServerWorld world, FrameTarget target) {
         for (BlockPos portalPos : target.portalPositions()) {
             if (world.getBlockState(portalPos).isOf(ModBlocks.ANCIENT_TRIAL_PORTAL)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isPortalInteractionPos(FrameTarget target, BlockPos pos) {
+        for (BlockPos portalPos : target.portalPositions()) {
+            if (portalPos.getChebyshevDistance(pos) <= 1) {
                 return true;
             }
         }

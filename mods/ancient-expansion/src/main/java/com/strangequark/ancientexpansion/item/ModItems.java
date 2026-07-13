@@ -32,8 +32,8 @@ public final class ModItems {
     public static final Item ANCIENT_RELIC = register("ancient_relic", Item::new,
             new Item.Settings().maxCount(1).rarity(Rarity.RARE));
 
-    public static final Item ANCIENT_TOKEN = register("ancient_token", Item::new,
-            new Item.Settings().rarity(Rarity.RARE));
+    public static final Item ANCIENT_FLINT_AND_STEEL = register("ancient_flint_and_steel", AncientFlintAndSteelItem::new,
+            new Item.Settings().maxDamage(64).rarity(Rarity.RARE));
 
     public static final Item ANCIENT_PICKAXE = register("ancient_pickaxe", AncientPickaxeItem::new,
             new Item.Settings()
@@ -48,9 +48,11 @@ public final class ModItems {
     public static void registerModItems() {
         ItemGroupEvents.modifyEntriesEvent(ItemGroups.INGREDIENTS).register(entries -> {
             entries.add(ANCIENT_RELIC);
-            entries.add(ANCIENT_TOKEN);
         });
-        ItemGroupEvents.modifyEntriesEvent(ItemGroups.TOOLS).register(entries -> entries.add(ANCIENT_PICKAXE));
+        ItemGroupEvents.modifyEntriesEvent(ItemGroups.TOOLS).register(entries -> {
+            entries.add(ANCIENT_FLINT_AND_STEEL);
+            entries.add(ANCIENT_PICKAXE);
+        });
     }
 
     public static boolean isAncientPickaxe(ItemStack stack) {
