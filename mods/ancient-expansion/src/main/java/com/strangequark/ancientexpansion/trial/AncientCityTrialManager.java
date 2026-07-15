@@ -2,6 +2,7 @@ package com.strangequark.ancientexpansion.trial;
 
 import com.strangequark.ancientexpansion.AncientExpansionMod;
 import com.strangequark.ancientexpansion.block.ModBlocks;
+import com.strangequark.ancientexpansion.item.ModItems;
 import com.strangequark.ancientexpansion.mixin.MobEntityGoalSelectorAccessor;
 import com.strangequark.ancientexpansion.mixin.PhantomEntityAccessor;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
@@ -29,7 +30,6 @@ import net.minecraft.entity.mob.PhantomEntity;
 import net.minecraft.entity.mob.WardenEntity;
 import net.minecraft.entity.mob.ZoglinEntity;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
 import net.minecraft.nbt.NbtList;
 import net.minecraft.network.packet.s2c.play.PositionFlag;
 import net.minecraft.registry.RegistryKey;
@@ -663,7 +663,7 @@ public final class AncientCityTrialManager {
         trial.world.setBlockState(chestPos, Blocks.CHEST.getDefaultState().with(ChestBlock.FACING, trial.prizeChestFacing), Block.NOTIFY_ALL);
         BlockEntity blockEntity = trial.world.getBlockEntity(chestPos);
         if (blockEntity instanceof ChestBlockEntity chest) {
-            chest.setStack(13, new ItemStack(Items.DIAMOND_SWORD));
+            chest.setStack(13, new ItemStack(ModItems.ANCIENT_SWORD));
             chest.markDirty();
         }
     }

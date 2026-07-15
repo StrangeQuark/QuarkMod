@@ -20,7 +20,7 @@ import net.minecraft.util.Unit;
 public final class ModItems {
     public static final TagKey<Item> ANCIENT_PICKAXE_ENCHANTABLE = itemTag("enchantable/ancient_pickaxe");
 
-    private static final ToolMaterial ANCIENT_PICKAXE_MATERIAL = new ToolMaterial(
+    private static final ToolMaterial ANCIENT_TOOL_MATERIAL = new ToolMaterial(
             net.minecraft.registry.tag.BlockTags.INCORRECT_FOR_IRON_TOOL,
             250,
             ToolMaterial.IRON.speed(),
@@ -35,9 +35,16 @@ public final class ModItems {
     public static final Item ANCIENT_FLINT_AND_STEEL = register("ancient_flint_and_steel", AncientFlintAndSteelItem::new,
             new Item.Settings().maxDamage(64).rarity(Rarity.RARE));
 
+    public static final Item ANCIENT_SWORD = register("ancient_sword", Item::new,
+            new Item.Settings()
+                    .sword(ANCIENT_TOOL_MATERIAL, 3.0F, -2.4F)
+                    .component(DataComponentTypes.UNBREAKABLE, Unit.INSTANCE)
+                    .fireproof()
+                    .rarity(Rarity.EPIC));
+
     public static final Item ANCIENT_PICKAXE = register("ancient_pickaxe", AncientPickaxeItem::new,
             new Item.Settings()
-                    .pickaxe(ANCIENT_PICKAXE_MATERIAL, 1.0F, -2.8F)
+                    .pickaxe(ANCIENT_TOOL_MATERIAL, 1.0F, -2.8F)
                     .component(DataComponentTypes.UNBREAKABLE, Unit.INSTANCE)
                     .fireproof()
                     .rarity(Rarity.EPIC));
@@ -52,6 +59,9 @@ public final class ModItems {
         ItemGroupEvents.modifyEntriesEvent(ItemGroups.TOOLS).register(entries -> {
             entries.add(ANCIENT_FLINT_AND_STEEL);
             entries.add(ANCIENT_PICKAXE);
+        });
+        ItemGroupEvents.modifyEntriesEvent(ItemGroups.COMBAT).register(entries -> {
+            entries.add(ANCIENT_SWORD);
         });
     }
 
