@@ -1,6 +1,9 @@
 {
   "enchantment.quarkmod.echo_prospector": "Echo Prospector",
   "enchantment.quarkmod.relic_efficiency": "Relic Efficiency",
+  "enchantment.quarkmod.soul_siphon": "Soul Siphon",
+  "enchantment.quarkmod.trophy_rite": "Trophy Rite",
+  "enchantment.quarkmod.warbound": "Warbound",
   "enchantment.quarkmod.worldbreaker": "Worldbreaker",
   "entity.minecraft.villager.quarkmod.ancient_keeper": "Ancient Keeper",
   "block.quarkmod.ancient_fire": "Ancient Fire",
@@ -14,5 +17,7 @@
   "message.quarkmod.ancient_trial_portal_activated": "The ancient frame opens",
   "message.quarkmod.ancient_trial_portal_already_active": "The ancient frame is already open",
   "message.quarkmod.ancient_trial_started": "Ancient trial started",
-  "message.quarkmod.ancient_trial_wave": "Wave %s/%s"
+  "message.quarkmod.ancient_trial_wave": "Wave %s/%s",
+  "tooltip.quarkmod.warbound_charges": "Warbound Charges: %s/%s",
+  "tooltip.quarkmod.warbound_progress": "Warbound Progress: %s/%s kills"
 }

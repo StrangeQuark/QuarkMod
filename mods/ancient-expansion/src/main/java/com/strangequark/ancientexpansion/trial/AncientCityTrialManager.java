@@ -2,6 +2,8 @@ package com.strangequark.ancientexpansion.trial;
 
 import com.strangequark.ancientexpansion.AncientExpansionMod;
 import com.strangequark.ancientexpansion.block.ModBlocks;
+import com.strangequark.ancientexpansion.enchantment.AncientEnchantmentLogic;
+import com.strangequark.ancientexpansion.enchantment.ModEnchantments;
 import com.strangequark.ancientexpansion.item.ModItems;
 import com.strangequark.ancientexpansion.mixin.MobEntityGoalSelectorAccessor;
 import com.strangequark.ancientexpansion.mixin.PhantomEntityAccessor;
@@ -663,7 +665,10 @@ public final class AncientCityTrialManager {
         trial.world.setBlockState(chestPos, Blocks.CHEST.getDefaultState().with(ChestBlock.FACING, trial.prizeChestFacing), Block.NOTIFY_ALL);
         BlockEntity blockEntity = trial.world.getBlockEntity(chestPos);
         if (blockEntity instanceof ChestBlockEntity chest) {
+            chest.setStack(11, AncientEnchantmentLogic.enchantedBook(trial.world, ModEnchantments.WARBOUND));
             chest.setStack(13, new ItemStack(ModItems.ANCIENT_SWORD));
+            chest.setStack(15, AncientEnchantmentLogic.enchantedBook(trial.world, ModEnchantments.SOUL_SIPHON));
+            chest.setStack(22, AncientEnchantmentLogic.enchantedBook(trial.world, ModEnchantments.TROPHY_RITE));
             chest.markDirty();
         }
     }
