@@ -18,10 +18,10 @@ public abstract class AnvilScreenHandlerAncientEnchantmentsMixin {
     private Property levelCost;
 
     @Inject(method = "updateResult", at = @At("TAIL"))
-    private void quarkmod_ancientexpansion$rejectAncientEnchantmentsOnOtherTools(CallbackInfo ci) {
+    private void quarkmod_ancientexpansion$rejectInvalidAncientEnchantments(CallbackInfo ci) {
         AnvilScreenHandler handler = (AnvilScreenHandler) (Object) this;
         ItemStack result = handler.getSlot(AnvilScreenHandler.OUTPUT_ID).getStack();
-        if (AncientEnchantmentLogic.hasInvalidAncientPickaxeOnlyEnchantments(result)) {
+        if (AncientEnchantmentLogic.hasInvalidAncientEnchantments(result)) {
             handler.getSlot(AnvilScreenHandler.OUTPUT_ID).setStackNoCallbacks(ItemStack.EMPTY);
             this.levelCost.set(0);
             handler.sendContentUpdates();

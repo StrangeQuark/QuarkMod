@@ -2,6 +2,7 @@ package com.strangequark.ancientexpansion.enchantment;
 
 import com.strangequark.ancientexpansion.item.ModItems;
 import com.strangequark.ancientexpansion.network.EchoProspectorPayload;
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
@@ -10,13 +11,25 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.MobSpawnerBlockEntity;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.AttributeModifierSlot;
+import net.minecraft.component.type.AttributeModifiersComponent;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityType;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.attribute.EntityAttributeModifier;
+import net.minecraft.entity.attribute.EntityAttributes;
+import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import net.minecraft.item.SpawnEggItem;
+import net.minecraft.nbt.NbtCompound;
+import net.minecraft.particle.ParticleTypes;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.entry.RegistryEntry;
@@ -25,9 +38,15 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.GameRules;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 
@@ -41,6 +60,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Consumer;
 
 public final class AncientEnchantmentLogic {
     private static final int ECHO_HORIZONTAL_RADIUS = 20;
@@ -53,10 +73,27 @@ public final class AncientEnchantmentLogic {
     private static final String ECHO_MARKER_TAG = "quarkmod_ancient_expansion_echo_marker";
     private static final float RELIC_EFFICIENCY_SPEED_PER_BLOCK = 0.75F;
     private static final int RELIC_EFFICIENCY_MAX_STREAK = 4096;
+    private static final String WARBOUND_KILL_PROGRESS_KEY = "quarkmod_warbound_kill_progress";
+    private static final String WARBOUND_CHARGES_KEY = "quarkmod_warbound_charges";
+    private static final int WARBOUND_KILLS_PER_CHARGE = 100;
+    private static final int WARBOUND_MAX_CHARGES = 10;
+    private static final int WARBOUND_PULSE_COOLDOWN_TICKS = 20 * 5;
+    private static final float ANCIENT_SWORD_BASE_ATTACK_DAMAGE_MODIFIER = 3.0F;
+    private static final float ANCIENT_SWORD_ATTACK_SPEED_MODIFIER = -2.4F;
+    private static final float WARBOUND_ATTACK_DAMAGE_PER_CHARGE = 1.0F;
+    private static final float WARBOUND_PULSE_DAMAGE = 10.0F;
+    private static final double WARBOUND_PULSE_RADIUS = 4.5D;
+    private static final float SOUL_SIPHON_HEAL_AMOUNT = 4.0F;
+    private static final float TROPHY_RITE_HEAD_DROP_CHANCE = 0.2F;
     private static final Set<RegistryKey<Enchantment>> ANCIENT_PICKAXE_ONLY_ENCHANTMENTS = Set.of(
             ModEnchantments.RELIC_EFFICIENCY,
             ModEnchantments.ECHO_PROSPECTOR,
             ModEnchantments.WORLDBREAKER
+    );
+    private static final Set<RegistryKey<Enchantment>> ANCIENT_SWORD_ONLY_ENCHANTMENTS = Set.of(
+            ModEnchantments.WARBOUND,
+            ModEnchantments.SOUL_SIPHON,
+            ModEnchantments.TROPHY_RITE
     );
     private static final Set<Block> WORLDBREAKER_EXCLUDED_BLOCKS = Set.of(
             Blocks.AIR,
@@ -110,6 +147,7 @@ public final class AncientEnchantmentLogic {
 
     public static void register() {
         PlayerBlockBreakEvents.AFTER.register(AncientEnchantmentLogic::afterBlockBreak);
+        ServerLivingEntityEvents.AFTER_DEATH.register(AncientEnchantmentLogic::afterEntityDeath);
         ServerTickEvents.END_WORLD_TICK.register(AncientEnchantmentLogic::clearExpiredEchoMarkers);
     }
 
@@ -118,6 +156,9 @@ public final class AncientEnchantmentLogic {
             return false;
         }
         if (isAncientPickaxeOnlyEnchantment(enchantment) && !ModItems.isAncientPickaxe(stack)) {
+            return false;
+        }
+        if (isAncientSwordOnlyEnchantment(enchantment) && !ModItems.isAncientSword(stack)) {
             return false;
         }
 
@@ -129,22 +170,40 @@ public final class AncientEnchantmentLogic {
                 .anyMatch(enchantment::equals);
     }
 
-    public static boolean hasInvalidAncientPickaxeOnlyEnchantments(ItemStack stack) {
+    public static boolean hasInvalidAncientEnchantments(ItemStack stack) {
         if (stack == null
                 || stack.isEmpty()
-                || ModItems.isAncientPickaxe(stack)
                 || stack.isOf(net.minecraft.item.Items.ENCHANTED_BOOK)) {
             return false;
+        }
+
+        if (ModItems.isAncientSword(stack)) {
+            return EnchantmentHelper.getEnchantments(stack)
+                    .getEnchantments()
+                    .stream()
+                    .map(RegistryEntry::getKey)
+                    .anyMatch(key -> key.filter(ANCIENT_SWORD_ONLY_ENCHANTMENTS::contains).isEmpty());
+        }
+
+        if (ModItems.isAncientPickaxe(stack)) {
+            return EnchantmentHelper.getEnchantments(stack)
+                    .getEnchantments()
+                    .stream()
+                    .anyMatch(AncientEnchantmentLogic::isAncientSwordOnlyEnchantment);
         }
 
         return EnchantmentHelper.getEnchantments(stack)
                 .getEnchantments()
                 .stream()
-                .anyMatch(AncientEnchantmentLogic::isAncientPickaxeOnlyEnchantment);
+                .anyMatch(AncientEnchantmentLogic::isAncientItemOnlyEnchantment);
     }
 
     public static boolean isAncientPickaxeOnlyEnchantment(RegistryKey<Enchantment> enchantment) {
         return ANCIENT_PICKAXE_ONLY_ENCHANTMENTS.contains(enchantment);
+    }
+
+    public static boolean isAncientSwordOnlyEnchantment(RegistryKey<Enchantment> enchantment) {
+        return ANCIENT_SWORD_ONLY_ENCHANTMENTS.contains(enchantment);
     }
 
     private static boolean isAncientPickaxeOnlyEnchantment(RegistryEntry<Enchantment> enchantment) {
@@ -153,11 +212,101 @@ public final class AncientEnchantmentLogic {
                 .isPresent();
     }
 
+    private static boolean isAncientSwordOnlyEnchantment(RegistryEntry<Enchantment> enchantment) {
+        return enchantment.getKey()
+                .filter(ANCIENT_SWORD_ONLY_ENCHANTMENTS::contains)
+                .isPresent();
+    }
+
+    private static boolean isAncientItemOnlyEnchantment(RegistryEntry<Enchantment> enchantment) {
+        return isAncientPickaxeOnlyEnchantment(enchantment) || isAncientSwordOnlyEnchantment(enchantment);
+    }
+
     public static ItemStack enchantedBook(ServerWorld world, RegistryKey<Enchantment> enchantment) {
         RegistryEntry.Reference<Enchantment> entry = world.getRegistryManager().getEntryOrThrow(enchantment);
         ItemStack stack = new ItemStack(net.minecraft.item.Items.ENCHANTED_BOOK);
         stack.addEnchantment(entry, 1);
         return stack;
+    }
+
+    public static boolean releaseWarboundPulse(ServerWorld world, ServerPlayerEntity player, ItemStack stack) {
+        if (!ModItems.isAncientSword(stack) || !hasEnchantment(stack, ModEnchantments.WARBOUND)) {
+            return false;
+        }
+
+        int charges = warboundCharges(stack);
+        if (charges <= 0) {
+            return false;
+        }
+        if (player.getItemCooldownManager().isCoolingDown(stack)) {
+            return true;
+        }
+
+        setWarboundCharges(stack, charges - 1);
+        syncWarboundAttributes(stack);
+        player.getItemCooldownManager().set(stack, WARBOUND_PULSE_COOLDOWN_TICKS);
+
+        DamageSource damageSource = player.getDamageSources().playerAttack(player);
+        Box box = player.getBoundingBox().expand(WARBOUND_PULSE_RADIUS);
+        for (LivingEntity target : world.getEntitiesByClass(LivingEntity.class, box, target -> isWarboundPulseTarget(player, target))) {
+            Vec3d knockback = target.getPos().subtract(player.getPos());
+            if (target.damage(world, damageSource, WARBOUND_PULSE_DAMAGE)) {
+                target.takeKnockback(0.8D, -knockback.x, -knockback.z);
+            }
+        }
+
+        world.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ENTITY_PLAYER_ATTACK_SWEEP, SoundCategory.PLAYERS, 1.0F, 0.65F);
+        world.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.BLOCK_SCULK_SHRIEKER_SHRIEK, SoundCategory.PLAYERS, 0.35F, 1.4F);
+        world.spawnParticles(ParticleTypes.SWEEP_ATTACK, player.getX(), player.getBodyY(0.5D), player.getZ(), 8, 1.8D, 0.2D, 1.8D, 0.0D);
+        world.spawnParticles(ParticleTypes.ENCHANT, player.getX(), player.getBodyY(0.5D), player.getZ(), 48, 2.2D, 0.7D, 2.2D, 0.08D);
+        return true;
+    }
+
+    public static void syncWarboundAttributes(ItemStack stack) {
+        if (!ModItems.isAncientSword(stack)) {
+            return;
+        }
+
+        int charges = hasEnchantment(stack, ModEnchantments.WARBOUND) ? warboundCharges(stack) : 0;
+        AttributeModifiersComponent attributes = ancientSwordAttributes(charges);
+        if (!attributes.equals(stack.getOrDefault(DataComponentTypes.ATTRIBUTE_MODIFIERS, AttributeModifiersComponent.DEFAULT))) {
+            stack.set(DataComponentTypes.ATTRIBUTE_MODIFIERS, attributes);
+        }
+    }
+
+    public static boolean isWarboundBarVisible(ItemStack stack) {
+        return ModItems.isAncientSword(stack) && hasEnchantment(stack, ModEnchantments.WARBOUND);
+    }
+
+    public static int warboundItemBarStep(ItemStack stack) {
+        if (warboundCharges(stack) >= WARBOUND_MAX_CHARGES) {
+            return 13;
+        }
+        return MathHelper.clamp(Math.round((float) warboundKillProgress(stack) * 13.0F / WARBOUND_KILLS_PER_CHARGE), 1, 13);
+    }
+
+    public static int warboundItemBarColor(ItemStack stack) {
+        float chargeRatio = (float) warboundCharges(stack) / WARBOUND_MAX_CHARGES;
+        return MathHelper.hsvToRgb(0.58F + chargeRatio * 0.22F, 0.85F, 1.0F);
+    }
+
+    public static void appendWarboundTooltip(ItemStack stack, Consumer<Text> textConsumer) {
+        if (!ModItems.isAncientSword(stack) || !hasEnchantment(stack, ModEnchantments.WARBOUND)) {
+            return;
+        }
+
+        textConsumer.accept(Text.translatable(
+                "tooltip.quarkmod.warbound_charges",
+                warboundCharges(stack),
+                WARBOUND_MAX_CHARGES
+        ).formatted(Formatting.DARK_AQUA));
+        if (warboundCharges(stack) < WARBOUND_MAX_CHARGES) {
+            textConsumer.accept(Text.translatable(
+                    "tooltip.quarkmod.warbound_progress",
+                    warboundKillProgress(stack),
+                    WARBOUND_KILLS_PER_CHARGE
+            ).formatted(Formatting.GRAY));
+        }
     }
 
     public static boolean canWorldbreak(PlayerEntity player, BlockState state) {
@@ -255,6 +404,150 @@ public final class AncientEnchantmentLogic {
 
     public static boolean isRelicTradeItem(ItemStack stack) {
         return stack.isOf(ModItems.ANCIENT_RELIC);
+    }
+
+    private static void afterEntityDeath(LivingEntity entity, DamageSource source) {
+        if (!(entity.getWorld() instanceof ServerWorld world) || !(source.getAttacker() instanceof ServerPlayerEntity player)) {
+            return;
+        }
+
+        ItemStack stack = player.getMainHandStack();
+        if (!ModItems.isAncientSword(stack)) {
+            return;
+        }
+
+        if (hasEnchantment(stack, ModEnchantments.WARBOUND)) {
+            addWarboundKill(world, player, stack);
+        }
+        if (hasEnchantment(stack, ModEnchantments.SOUL_SIPHON)) {
+            player.heal(SOUL_SIPHON_HEAL_AMOUNT);
+        }
+        if (hasEnchantment(stack, ModEnchantments.TROPHY_RITE)) {
+            dropTrophyRiteHead(world, entity);
+        }
+    }
+
+    private static boolean isWarboundPulseTarget(ServerPlayerEntity player, LivingEntity target) {
+        return target != player
+                && target.isAlive()
+                && target.isAttackable()
+                && !target.isSpectator()
+                && !player.isTeammate(target);
+    }
+
+    private static void addWarboundKill(ServerWorld world, ServerPlayerEntity player, ItemStack stack) {
+        int charges = warboundCharges(stack);
+        int progress = warboundKillProgress(stack);
+        if (charges >= WARBOUND_MAX_CHARGES) {
+            setWarboundData(stack, 0, WARBOUND_MAX_CHARGES);
+            syncWarboundAttributes(stack);
+            return;
+        }
+
+        progress++;
+        if (progress >= WARBOUND_KILLS_PER_CHARGE) {
+            progress = 0;
+            charges++;
+            player.playSoundToPlayer(SoundEvents.BLOCK_RESPAWN_ANCHOR_CHARGE, SoundCategory.PLAYERS, 0.8F, 0.7F + charges * 0.05F);
+            world.spawnParticles(ParticleTypes.ENCHANT, player.getX(), player.getBodyY(0.5D), player.getZ(), 36, 0.7D, 0.5D, 0.7D, 0.08D);
+        }
+
+        setWarboundData(stack, progress, charges);
+        syncWarboundAttributes(stack);
+    }
+
+    private static void dropTrophyRiteHead(ServerWorld world, LivingEntity entity) {
+        if (!world.getGameRules().getBoolean(GameRules.DO_MOB_LOOT) || world.random.nextFloat() >= TROPHY_RITE_HEAD_DROP_CHANCE) {
+            return;
+        }
+
+        Item head = trophyHeadFor(entity.getType());
+        if (head != null) {
+            entity.dropStack(world, new ItemStack(head));
+        }
+    }
+
+    @Nullable
+    private static Item trophyHeadFor(EntityType<?> type) {
+        if (type == EntityType.SKELETON) {
+            return Items.SKELETON_SKULL;
+        }
+        if (type == EntityType.WITHER_SKELETON) {
+            return Items.WITHER_SKELETON_SKULL;
+        }
+        if (type == EntityType.ZOMBIE) {
+            return Items.ZOMBIE_HEAD;
+        }
+        if (type == EntityType.CREEPER) {
+            return Items.CREEPER_HEAD;
+        }
+        if (type == EntityType.PIGLIN) {
+            return Items.PIGLIN_HEAD;
+        }
+        if (type == EntityType.ENDER_DRAGON) {
+            return Items.DRAGON_HEAD;
+        }
+        return null;
+    }
+
+    private static int warboundKillProgress(ItemStack stack) {
+        return MathHelper.clamp(warboundData(stack).getInt(WARBOUND_KILL_PROGRESS_KEY, 0), 0, WARBOUND_KILLS_PER_CHARGE - 1);
+    }
+
+    private static int warboundCharges(ItemStack stack) {
+        return MathHelper.clamp(warboundData(stack).getInt(WARBOUND_CHARGES_KEY, 0), 0, WARBOUND_MAX_CHARGES);
+    }
+
+    private static NbtCompound warboundData(ItemStack stack) {
+        NbtComponent component = stack.getOrDefault(DataComponentTypes.CUSTOM_DATA, NbtComponent.DEFAULT);
+        return component.copyNbt();
+    }
+
+    private static void setWarboundCharges(ItemStack stack, int charges) {
+        setWarboundData(stack, warboundKillProgress(stack), charges);
+    }
+
+    private static void setWarboundData(ItemStack stack, int progress, int charges) {
+        int clampedCharges = MathHelper.clamp(charges, 0, WARBOUND_MAX_CHARGES);
+        int clampedProgress = clampedCharges >= WARBOUND_MAX_CHARGES
+                ? 0
+                : MathHelper.clamp(progress, 0, WARBOUND_KILLS_PER_CHARGE - 1);
+        NbtComponent.set(DataComponentTypes.CUSTOM_DATA, stack, nbt -> {
+            if (clampedProgress > 0) {
+                nbt.putInt(WARBOUND_KILL_PROGRESS_KEY, clampedProgress);
+            } else {
+                nbt.remove(WARBOUND_KILL_PROGRESS_KEY);
+            }
+
+            if (clampedCharges > 0) {
+                nbt.putInt(WARBOUND_CHARGES_KEY, clampedCharges);
+            } else {
+                nbt.remove(WARBOUND_CHARGES_KEY);
+            }
+        });
+    }
+
+    private static AttributeModifiersComponent ancientSwordAttributes(int charges) {
+        return AttributeModifiersComponent.builder()
+                .add(
+                        EntityAttributes.ATTACK_DAMAGE,
+                        new EntityAttributeModifier(
+                                Item.BASE_ATTACK_DAMAGE_MODIFIER_ID,
+                                ANCIENT_SWORD_BASE_ATTACK_DAMAGE_MODIFIER + MathHelper.clamp(charges, 0, WARBOUND_MAX_CHARGES) * WARBOUND_ATTACK_DAMAGE_PER_CHARGE,
+                                EntityAttributeModifier.Operation.ADD_VALUE
+                        ),
+                        AttributeModifierSlot.MAINHAND
+                )
+                .add(
+                        EntityAttributes.ATTACK_SPEED,
+                        new EntityAttributeModifier(
+                                Item.BASE_ATTACK_SPEED_MODIFIER_ID,
+                                ANCIENT_SWORD_ATTACK_SPEED_MODIFIER,
+                                EntityAttributeModifier.Operation.ADD_VALUE
+                        ),
+                        AttributeModifierSlot.MAINHAND
+                )
+                .build();
     }
 
     private static void afterBlockBreak(World world, PlayerEntity player, BlockPos pos, BlockState state, @Nullable BlockEntity blockEntity) {

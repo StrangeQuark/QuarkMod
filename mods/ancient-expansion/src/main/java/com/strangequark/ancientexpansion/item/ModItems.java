@@ -19,6 +19,7 @@ import net.minecraft.util.Unit;
 
 public final class ModItems {
     public static final TagKey<Item> ANCIENT_PICKAXE_ENCHANTABLE = itemTag("enchantable/ancient_pickaxe");
+    public static final TagKey<Item> ANCIENT_SWORD_ENCHANTABLE = itemTag("enchantable/ancient_sword");
 
     private static final ToolMaterial ANCIENT_TOOL_MATERIAL = new ToolMaterial(
             net.minecraft.registry.tag.BlockTags.INCORRECT_FOR_IRON_TOOL,
@@ -35,9 +36,9 @@ public final class ModItems {
     public static final Item ANCIENT_FLINT_AND_STEEL = register("ancient_flint_and_steel", AncientFlintAndSteelItem::new,
             new Item.Settings().maxDamage(64).rarity(Rarity.RARE));
 
-    public static final Item ANCIENT_SWORD = register("ancient_sword", Item::new,
+    public static final Item ANCIENT_SWORD = register("ancient_sword", AncientSwordItem::new,
             new Item.Settings()
-                    .sword(ANCIENT_TOOL_MATERIAL, 3.0F, -2.4F)
+                    .sword(ANCIENT_TOOL_MATERIAL, 1.0F, -2.4F)
                     .component(DataComponentTypes.UNBREAKABLE, Unit.INSTANCE)
                     .fireproof()
                     .rarity(Rarity.EPIC));
@@ -67,6 +68,10 @@ public final class ModItems {
 
     public static boolean isAncientPickaxe(ItemStack stack) {
         return stack != null && stack.isOf(ANCIENT_PICKAXE);
+    }
+
+    public static boolean isAncientSword(ItemStack stack) {
+        return stack != null && stack.isOf(ANCIENT_SWORD);
     }
 
     private static Item register(String name, java.util.function.Function<Item.Settings, Item> factory, Item.Settings settings) {
