@@ -4,8 +4,7 @@
       "model": "quarkmod:block/ancient_trial_portal"
     },
     "axis=z": {
-      "model": "quarkmod:block/ancient_trial_portal",
-      "y": 90
+      "model": "quarkmod:block/ancient_trial_portal_ew"
     }
   }
 }
