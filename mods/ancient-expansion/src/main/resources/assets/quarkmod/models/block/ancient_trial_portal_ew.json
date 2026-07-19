@@ -5,14 +5,14 @@
   },
   "elements": [
     {
-      "from": [0, 0, 6],
-      "to": [16, 16, 10],
+      "from": [6, 0, 0],
+      "to": [10, 16, 16],
       "faces": {
-        "north": {
+        "east": {
           "uv": [0, 0, 16, 16],
           "texture": "#portal"
         },
-        "south": {
+        "west": {
           "uv": [0, 0, 16, 16],
           "texture": "#portal"
         }

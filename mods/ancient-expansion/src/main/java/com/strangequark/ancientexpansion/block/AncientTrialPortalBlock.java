@@ -6,7 +6,7 @@ import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityCollisionHandler;
 import net.minecraft.item.ItemStack;
-import net.minecraft.particle.ParticleTypes;
+import net.minecraft.particle.DustParticleEffect;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.state.StateManager;
 import net.minecraft.state.property.EnumProperty;
@@ -24,6 +24,7 @@ import java.util.Map;
 
 public class AncientTrialPortalBlock extends Block {
     public static final EnumProperty<Direction.Axis> AXIS = Properties.HORIZONTAL_AXIS;
+    private static final DustParticleEffect RED_PORTAL_PARTICLE = new DustParticleEffect(0xE23424, 1.0F);
     private static final Map<Direction.Axis, VoxelShape> SHAPES_BY_AXIS =
             VoxelShapes.createHorizontalAxisShapeMap(Block.createColumnShape(4.0D, 16.0D, 0.0D, 16.0D));
 
@@ -55,7 +56,7 @@ public class AncientTrialPortalBlock extends Block {
             double x = pos.getX() + random.nextDouble();
             double y = pos.getY() + random.nextDouble();
             double z = pos.getZ() + random.nextDouble();
-            world.addParticleClient(ParticleTypes.REVERSE_PORTAL, x, y, z, 0.0D, 0.0D, 0.0D);
+            world.addParticleClient(RED_PORTAL_PARTICLE, x, y, z, 0.0D, 0.0D, 0.0D);
         }
     }
 
