@@ -57,6 +57,7 @@ import net.minecraft.util.math.random.Random;
 import net.minecraft.world.TeleportTarget;
 import net.minecraft.world.World;
 import net.minecraft.world.gen.chunk.ChunkGenerator;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -182,6 +183,20 @@ public final class AncientCityTrialManager {
         enterTrialPortal(player, portalPos);
     }
 
+    public static boolean hasActiveTrial(ServerPlayerEntity player) {
+        return ACTIVE_TRIALS.containsKey(player.getUuid());
+    }
+
+    public static boolean startTrial(
+            ServerPlayerEntity player,
+            ServerWorld sourceWorld,
+            AncientCityTrialPortal.FrameTarget sourceFrame,
+            ServerWorld returnWorld,
+            BlockPos returnSpawn
+    ) {
+        return startTrial(player, sourceWorld, sourceFrame, returnWorld, returnSpawn, null);
+    }
+
     private static void enterTrialPortal(ServerPlayerEntity player, BlockPos portalPos) {
         ServerWorld sourceWorld = player.getWorld();
         if (!sourceWorld.getBlockState(portalPos).isOf(ModBlocks.ANCIENT_TRIAL_PORTAL)) {
@@ -199,15 +214,39 @@ public final class AncientCityTrialManager {
             return;
         }
 
-        TrialInstance trial = createTrial(sourceWorld, trialWorld, player, frameTarget.get());
-        ACTIVE_TRIALS.put(player.getUuid(), trial);
-        AncientCityTrialPortal.clearConnectedPortal(sourceWorld, portalPos);
+        startTrial(player, sourceWorld, frameTarget.get(), sourceWorld, frameTarget.get().altarPos().up(2), portalPos);
+    }
 
-        buildTrialCity(trialWorld, frameTarget.get(), trial);
+    private static boolean startTrial(
+            ServerPlayerEntity player,
+            ServerWorld sourceWorld,
+            AncientCityTrialPortal.FrameTarget sourceFrame,
+            ServerWorld returnWorld,
+            BlockPos returnSpawn,
+            @Nullable BlockPos sourcePortalToClear
+    ) {
+        if (ACTIVE_TRIALS.containsKey(player.getUuid())) {
+            return false;
+        }
+
+        ServerWorld trialWorld = player.getServer().getWorld(ANCIENT_TRIAL_WORLD);
+        if (trialWorld == null) {
+            player.sendMessage(Text.translatable("message.quarkmod.ancient_trial_dimension_missing"), true);
+            return false;
+        }
+
+        TrialInstance trial = createTrial(sourceWorld, trialWorld, returnWorld, returnSpawn, player, sourceFrame);
+        ACTIVE_TRIALS.put(player.getUuid(), trial);
+        if (sourcePortalToClear != null) {
+            AncientCityTrialPortal.clearConnectedPortal(sourceWorld, sourcePortalToClear);
+        }
+
+        buildTrialCity(trialWorld, sourceFrame, trial);
         teleport(player, trialWorld, trial.trialSpawn.toBottomCenterPos(), player.getYaw(), player.getPitch());
         spawnNextWave(trial, player);
         player.sendMessage(Text.translatable("message.quarkmod.ancient_trial_started"), true);
         player.playSoundToPlayer(SoundEvents.BLOCK_TRIAL_SPAWNER_ABOUT_TO_SPAWN_ITEM, SoundCategory.AMBIENT, 0.65F, 0.7F);
+        return true;
     }
 
     private static void handleActiveTrialPortal(ServerPlayerEntity player, BlockPos portalPos, TrialInstance trial) {
@@ -272,7 +311,14 @@ public final class AncientCityTrialManager {
         }
     }
 
-    private static TrialInstance createTrial(ServerWorld sourceWorld, ServerWorld trialWorld, ServerPlayerEntity player, AncientCityTrialPortal.FrameTarget sourceFrame) {
+    private static TrialInstance createTrial(
+            ServerWorld sourceWorld,
+            ServerWorld trialWorld,
+            ServerWorld returnWorld,
+            BlockPos returnSpawn,
+            ServerPlayerEntity player,
+            AncientCityTrialPortal.FrameTarget sourceFrame
+    ) {
         int index = NEXT_INSTANCE_INDEX.getAndIncrement();
         int instanceX = INSTANCE_ORIGIN_X + (index % INSTANCE_COLUMNS) * INSTANCE_SPACING;
         int instanceZ = INSTANCE_ORIGIN_Z + (index / INSTANCE_COLUMNS) * INSTANCE_SPACING;
@@ -296,11 +342,10 @@ public final class AncientCityTrialManager {
                 .toList();
         BlockPos trialSpawn = trialAltarBase.offset(sourceFrame.portalFrontDirection(), 2).up();
         BlockPos prizeChestPos = trialAltarBase.up();
-        BlockPos returnSpawn = sourceFrame.altarPos().up(2);
 
         return new TrialInstance(
                 trialWorld,
-                sourceWorld,
+                returnWorld,
                 index,
                 offsetX,
                 offsetY,
