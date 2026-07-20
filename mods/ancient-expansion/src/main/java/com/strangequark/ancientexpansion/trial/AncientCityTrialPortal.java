@@ -13,6 +13,7 @@ import net.minecraft.structure.StructurePiece;
 import net.minecraft.structure.StructureStart;
 import net.minecraft.structure.StructureTemplate;
 import net.minecraft.util.BlockMirror;
+import net.minecraft.util.BlockRotation;
 import net.minecraft.util.math.BlockBox;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.ChunkPos;
@@ -181,6 +182,8 @@ public final class AncientCityTrialPortal {
                 portalFrontDirection,
                 List.copyOf(portalPositions),
                 structureStart.getBoundingBox(),
+                piece.getPos(),
+                piece.getRotation(),
                 structureStart
         );
     }
@@ -201,7 +204,12 @@ public final class AncientCityTrialPortal {
             Direction portalFrontDirection,
             List<BlockPos> portalPositions,
             BlockBox cityBoundingBox,
+            BlockPos cityCenterPiecePos,
+            BlockRotation cityCenterRotation,
             StructureStart structureStart
     ) {
+        public BlockPos transformCityCenterLocal(BlockPos localPos) {
+            return StructureTemplate.transformAround(localPos, BlockMirror.NONE, cityCenterRotation, BlockPos.ORIGIN).add(cityCenterPiecePos);
+        }
     }
 }

@@ -1,6 +1,7 @@
 package com.strangequark.ancientexpansion.block;
 
 import com.strangequark.ancientexpansion.trial.AncientCityTrialManager;
+import com.strangequark.ancientexpansion.past.AncientPastManager;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;
@@ -46,7 +47,9 @@ public class AncientTrialPortalBlock extends Block {
     @Override
     protected void onEntityCollision(BlockState state, World world, BlockPos pos, Entity entity, EntityCollisionHandler handler) {
         if (!world.isClient && entity instanceof ServerPlayerEntity player && entity.canUsePortals(false)) {
-            AncientCityTrialManager.handlePortalCollision(player, pos);
+            if (AncientCityTrialManager.hasActiveTrial(player) || !AncientPastManager.handlePortalCollision(player, pos)) {
+                AncientCityTrialManager.handlePortalCollision(player, pos);
+            }
         }
     }
 

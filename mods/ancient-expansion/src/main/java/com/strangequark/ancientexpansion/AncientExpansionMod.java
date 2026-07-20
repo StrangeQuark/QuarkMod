@@ -5,6 +5,7 @@ import com.strangequark.ancientexpansion.block.ModBlocks;
 import com.strangequark.ancientexpansion.item.ModItems;
 import com.strangequark.ancientexpansion.loot.AncientExpansionLootTables;
 import com.strangequark.ancientexpansion.network.EchoProspectorPayload;
+import com.strangequark.ancientexpansion.past.AncientPastManager;
 import com.strangequark.ancientexpansion.trial.AncientCityTrialManager;
 import com.strangequark.ancientexpansion.village.AncientMazeVillagers;
 import com.strangequark.ancientexpansion.worldgen.ModStructurePieces;
@@ -32,6 +33,7 @@ public final class AncientExpansionMod implements ModInitializer {
         AncientExpansionLootTables.register();
         AncientMazeVillagers.register();
         AncientEnchantmentLogic.register();
+        AncientPastManager.register();
         AncientCityTrialManager.register();
         ModStructurePieces.registerStructurePieces();
         ModStructureTypes.registerStructureTypes();
