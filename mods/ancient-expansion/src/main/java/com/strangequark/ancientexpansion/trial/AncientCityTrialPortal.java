@@ -66,12 +66,20 @@ public final class AncientCityTrialPortal {
             return ActivationResult.ALREADY_ACTIVE;
         }
 
-        placePortal(world, target.portalPositions(), target.portalAxis());
+        placePastPortal(world, target.portalPositions(), target.portalAxis());
         return ActivationResult.ACTIVATED;
     }
 
     public static void placePortal(ServerWorld world, List<BlockPos> portalPositions, Direction.Axis portalAxis) {
-        BlockState portalState = ModBlocks.ANCIENT_TRIAL_PORTAL.getDefaultState()
+        placePortal(world, portalPositions, portalAxis, ModBlocks.ANCIENT_TRIAL_PORTAL);
+    }
+
+    public static void placePastPortal(ServerWorld world, List<BlockPos> portalPositions, Direction.Axis portalAxis) {
+        placePortal(world, portalPositions, portalAxis, ModBlocks.ANCIENT_PAST_PORTAL);
+    }
+
+    private static void placePortal(ServerWorld world, List<BlockPos> portalPositions, Direction.Axis portalAxis, Block portalBlock) {
+        BlockState portalState = portalBlock.getDefaultState()
                 .with(AncientTrialPortalBlock.AXIS, portalAxis);
         for (BlockPos portalPos : portalPositions) {
             world.setBlockState(portalPos, portalState, Block.NOTIFY_ALL);
@@ -79,7 +87,7 @@ public final class AncientCityTrialPortal {
     }
 
     public static void clearConnectedPortal(ServerWorld world, BlockPos seed) {
-        if (!world.getBlockState(seed).isOf(ModBlocks.ANCIENT_TRIAL_PORTAL)) {
+        if (!isPortalBlock(world.getBlockState(seed))) {
             return;
         }
 
@@ -91,7 +99,7 @@ public final class AncientCityTrialPortal {
         int cleared = 0;
         while (!queue.isEmpty() && cleared < PORTAL_CLEAR_LIMIT) {
             BlockPos pos = queue.removeFirst();
-            if (!world.getBlockState(pos).isOf(ModBlocks.ANCIENT_TRIAL_PORTAL)) {
+            if (!isPortalBlock(world.getBlockState(pos))) {
                 continue;
             }
 
@@ -100,7 +108,7 @@ public final class AncientCityTrialPortal {
 
             for (Direction direction : Direction.values()) {
                 BlockPos next = pos.offset(direction);
-                if (visited.add(next) && world.getBlockState(next).isOf(ModBlocks.ANCIENT_TRIAL_PORTAL)) {
+                if (visited.add(next) && isPortalBlock(world.getBlockState(next))) {
                     queue.add(next);
                 }
             }
@@ -141,11 +149,15 @@ public final class AncientCityTrialPortal {
 
     private static boolean isPortalActive(ServerWorld world, FrameTarget target) {
         for (BlockPos portalPos : target.portalPositions()) {
-            if (world.getBlockState(portalPos).isOf(ModBlocks.ANCIENT_TRIAL_PORTAL)) {
+            if (isPortalBlock(world.getBlockState(portalPos))) {
                 return true;
             }
         }
         return false;
+    }
+
+    public static boolean isPortalBlock(BlockState state) {
+        return state.isOf(ModBlocks.ANCIENT_TRIAL_PORTAL) || state.isOf(ModBlocks.ANCIENT_PAST_PORTAL);
     }
 
     private static boolean isPortalInteractionPos(FrameTarget target, BlockPos pos) {
