@@ -48,7 +48,7 @@ public final class AncientMazeClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         BlockRenderLayerMap.putBlocks(BlockRenderLayer.CUTOUT, ModBlocks.ANCIENT_FIRE);
-        BlockRenderLayerMap.putBlocks(BlockRenderLayer.TRANSLUCENT, ModBlocks.ANCIENT_TRIAL_PORTAL);
+        BlockRenderLayerMap.putBlocks(BlockRenderLayer.TRANSLUCENT, ModBlocks.ANCIENT_TRIAL_PORTAL, ModBlocks.ANCIENT_PAST_PORTAL);
         ClientPlayNetworking.registerGlobalReceiver(
                 EchoProspectorPayload.ID,
                 (payload, context) -> context.client().execute(() -> showEchoHighlights(payload.positions()))

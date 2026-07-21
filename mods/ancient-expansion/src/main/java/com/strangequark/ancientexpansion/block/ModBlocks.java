@@ -32,6 +32,17 @@ public final class ModBlocks {
                     .pistonBehavior(PistonBehavior.BLOCK)
     );
 
+    public static final Block ANCIENT_PAST_PORTAL = registerWithoutItem(
+            "ancient_past_portal",
+            settings -> new AncientTrialPortalBlock(settings, 0xE23424),
+            AbstractBlock.Settings.copy(Blocks.NETHER_PORTAL)
+                    .noCollision()
+                    .nonOpaque()
+                    .luminance(state -> 11)
+                    .dropsNothing()
+                    .pistonBehavior(PistonBehavior.BLOCK)
+    );
+
     private ModBlocks() {
     }
 

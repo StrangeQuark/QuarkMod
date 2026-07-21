@@ -199,7 +199,7 @@ public final class AncientCityTrialManager {
 
     private static void enterTrialPortal(ServerPlayerEntity player, BlockPos portalPos) {
         ServerWorld sourceWorld = player.getWorld();
-        if (!sourceWorld.getBlockState(portalPos).isOf(ModBlocks.ANCIENT_TRIAL_PORTAL)) {
+        if (!AncientCityTrialPortal.isPortalBlock(sourceWorld.getBlockState(portalPos))) {
             return;
         }
 

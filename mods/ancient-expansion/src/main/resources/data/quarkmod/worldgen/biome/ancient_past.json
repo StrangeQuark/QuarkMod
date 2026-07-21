@@ -32,13 +32,8 @@
   "features": [
     [],
     [],
-    [
-      "minecraft:amethyst_geode"
-    ],
-    [
-      "minecraft:monster_room",
-      "minecraft:monster_room_deep"
-    ],
+    [],
+    [],
     [],
     [],
     [
@@ -69,9 +64,7 @@
       "minecraft:ore_copper_large"
     ],
     [],
-    [
-      "minecraft:spring_lava"
-    ],
+    [],
     [
       "minecraft:glow_lichen",
       "minecraft:brown_mushroom_normal",
