@@ -46,6 +46,10 @@ public final class AncientCityBuildHelper {
         ChunkGenerator chunkGenerator = world.getChunkManager().getChunkGenerator();
         Random random = Random.create(randomSeed);
         for (StructurePiece piece : pieces.pieces()) {
+            BlockBox shiftedBox = offsetBox(piece.getBoundingBox(), offsetX, offsetY, offsetZ);
+            if (!shiftedBox.intersects(generationBox)) {
+                continue;
+            }
             piece.translate(offsetX, offsetY, offsetZ);
             piece.generate(world, world.getStructureAccessor(), chunkGenerator, random, generationBox, new ChunkPos(piece.getCenter()), BlockPos.ORIGIN);
         }

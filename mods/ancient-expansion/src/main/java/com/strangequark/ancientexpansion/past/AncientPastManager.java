@@ -3,6 +3,7 @@ package com.strangequark.ancientexpansion.past;
 import com.strangequark.ancientexpansion.AncientExpansionMod;
 import com.strangequark.ancientexpansion.block.ModBlocks;
 import com.strangequark.ancientexpansion.past.AncientPastState.PastCityInstance;
+import com.strangequark.ancientexpansion.past.AncientPastState.PastTerrainPiece;
 import com.strangequark.ancientexpansion.trial.AncientCityBuildHelper;
 import com.strangequark.ancientexpansion.trial.AncientCityTrialManager;
 import com.strangequark.ancientexpansion.trial.AncientCityTrialPortal;
@@ -16,11 +17,14 @@ import net.minecraft.entity.SpawnReason;
 import net.minecraft.entity.passive.VillagerEntity;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
+import net.minecraft.registry.tag.BlockTags;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
+import net.minecraft.structure.PoolStructurePiece;
+import net.minecraft.structure.StructurePiece;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockBox;
@@ -31,21 +35,25 @@ import net.minecraft.util.math.random.Random;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.WorldChunk;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
 public final class AncientPastManager {
     public static final RegistryKey<World> ANCIENT_PAST_WORLD = RegistryKey.of(RegistryKeys.WORLD, AncientExpansionMod.id("ancient_past"));
 
-    private static final int PAST_CITY_LAYOUT_VERSION = 6;
+    private static final int PAST_CITY_LAYOUT_VERSION = 12;
     private static final int VANILLA_ANCIENT_CITY_START_HEIGHT = -27;
-    private static final int PAST_ANCIENT_CITY_START_HEIGHT = 72;
+    private static final int PAST_ANCIENT_CITY_START_HEIGHT = 250;
     private static final int PAST_CITY_Y_OFFSET = PAST_ANCIENT_CITY_START_HEIGHT - VANILLA_ANCIENT_CITY_START_HEIGHT;
-    private static final int PAST_CITY_BOOTSTRAP_HORIZONTAL_RADIUS = 48;
+    private static final int PAST_CITY_BOOTSTRAP_HORIZONTAL_RADIUS = 32;
     private static final int PAST_CITY_BOOTSTRAP_DOWN = 24;
     private static final int PAST_CITY_BOOTSTRAP_UP = 48;
     private static final int TRIAL_PORTAL_WIDTH = 3;
@@ -65,16 +73,31 @@ public final class AncientPastManager {
     private static final int VILLAGER_MIN_DISTANCE_SQUARED = 4 * 4;
     private static final int SOURCE_FRAME_RELOAD_PADDING = 16;
     private static final int PAST_CHUNK_CLEANUPS_PER_TICK = 4;
+    private static final int PAST_CITY_BUILD_CHUNKS_PER_TICK = 1;
+    private static final int PAST_BEDROCK_LAYER_THICKNESS = 5;
+    private static final int PAST_CITY_CAVERN_HORIZONTAL_MARGIN = 28;
+    private static final int PAST_CITY_CAVERN_FLOOR_DEPTH = 3;
+    private static final int PAST_CITY_CAVERN_CEILING_MARGIN = 22;
+    private static final int PAST_CITY_TERRAIN_ADAPTATION_RADIUS = 12;
+    private static final double PAST_CITY_TERRAIN_CLEAR_THRESHOLD = -0.035;
+    private static final double PAST_CITY_TERRAIN_FILL_THRESHOLD = 0.06;
+    private static final int PAST_ARRIVAL_CLEAR_RADIUS = 5;
+    private static final int PAST_ARRIVAL_CLEAR_DOWN = 1;
+    private static final int PAST_ARRIVAL_CLEAR_UP = 4;
+    private static final int PAST_ARRIVAL_FLOOR_RADIUS = 1;
     private static final Set<Long> PENDING_PRISTINE_CHUNKS = new HashSet<>();
+    private static final Map<String, PendingPastCityBuild> PENDING_CITY_BUILDS = new LinkedHashMap<>();
 
     private AncientPastManager() {
     }
 
     public static void register() {
-        PastAncientCityPristineProcessor.register();
         ServerChunkEvents.CHUNK_GENERATE.register(AncientPastManager::queuePristineCleanup);
         ServerChunkEvents.CHUNK_LOAD.register(AncientPastManager::queuePristineCleanup);
-        ServerTickEvents.END_WORLD_TICK.register(AncientPastManager::cleanQueuedPastChunks);
+        ServerTickEvents.END_WORLD_TICK.register(world -> {
+            cleanQueuedPastChunks(world);
+            buildQueuedPastCityChunks(world);
+        });
     }
 
     public static boolean handlePortalCollision(ServerPlayerEntity player, BlockPos portalPos) {
@@ -187,6 +210,8 @@ public final class AncientPastManager {
         BlockPos pastAltarPos = shiftToPast(sourceFrame.altarPos(), offsetY);
         BlockBox pastCityBox = AncientCityBuildHelper.offsetBox(sourceFrame.cityBoundingBox(), 0, offsetY, 0);
         TrialPortalRoomPlan trialRoom = createTrialPortalRoomPlan(sourceFrame, offsetY);
+        List<PastTerrainPiece> pastTerrainPieces = collectPastTerrainPieces(sourceFrame, offsetY);
+        List<BlockBox> pastPieceBoxes = pastTerrainPieces.stream().map(PastTerrainPiece::box).toList();
 
         return new PastCityInstance(
                 sourceWorldId,
@@ -201,9 +226,20 @@ public final class AncientPastManager {
                 pastAltarPos.up(2),
                 trialRoom.returnSpawn(),
                 pastCityBox,
+                pastPieceBoxes,
+                pastTerrainPieces,
                 PAST_CITY_LAYOUT_VERSION,
                 false
         );
+    }
+
+    private static List<PastTerrainPiece> collectPastTerrainPieces(AncientCityTrialPortal.FrameTarget sourceFrame, int offsetY) {
+        List<PastTerrainPiece> pieces = new ArrayList<>();
+        for (StructurePiece piece : sourceFrame.structureStart().getChildren()) {
+            int groundLevelDelta = piece instanceof PoolStructurePiece poolPiece ? poolPiece.getGroundLevelDelta() : 0;
+            pieces.add(new PastTerrainPiece(AncientCityBuildHelper.offsetBox(piece.getBoundingBox(), 0, offsetY, 0), groundLevelDelta));
+        }
+        return List.copyOf(pieces);
     }
 
     private static BlockPos shiftToPast(BlockPos pos, int offsetY) {
@@ -230,20 +266,98 @@ public final class AncientPastManager {
                 PAST_CITY_BOOTSTRAP_DOWN,
                 PAST_CITY_BOOTSTRAP_UP
         );
+        ChunkPos sourceStartChunk = sourceFrame.structureStart().getPos();
+        PastAncientCityStructure.allowStart(pastWorld.getSeed(), sourceStartChunk);
+        pastWorld.getChunk(sourceStartChunk.x, sourceStartChunk.z);
         AncientCityBuildHelper.loadChunks(pastWorld, bootstrapBox);
 
-        if (city.generated()) {
-            return city;
+        if (!city.generated()) {
+            cleanPristineBlocks(pastWorld, bootstrapBox);
+            buildRedstoneTrialPortalRoom(pastWorld, sourceFrame, city);
+            spawnVillagers(pastWorld, bootstrapBox, sourceFrame.altarPos().asLong());
+            city = state.put(city.withGenerated(true));
         }
 
-        cleanPristineBlocks(pastWorld, bootstrapBox);
-        buildRedstoneTrialPortalRoom(pastWorld, sourceFrame, city);
-        ensurePastPortals(pastWorld, city);
-        prepareStandingSpot(pastWorld, city.pastSpawn());
+        prepareArrivalArea(pastWorld, city.pastSpawn());
         prepareStandingSpot(pastWorld, city.trialReturnSpawn());
-        spawnVillagers(pastWorld, bootstrapBox, sourceFrame.altarPos().asLong());
+        ensurePastPortals(pastWorld, city);
+        return city;
+    }
 
-        return state.put(city.withGenerated(true));
+    private static void buildPastCityBootstrap(
+            ServerWorld world,
+            AncientCityTrialPortal.FrameTarget sourceFrame,
+            PastCityInstance city,
+            BlockBox generationBox
+    ) {
+        shapePastCityCavern(world, city, generationBox);
+        adaptPastCityTerrain(world, city, generationBox);
+        AncientCityBuildHelper.generateShiftedAncientCity(
+                world,
+                sourceFrame,
+                0,
+                PAST_CITY_Y_OFFSET,
+                0,
+                generationBox,
+                world.getSeed() ^ sourceFrame.altarPos().asLong()
+        );
+        cleanPristineBlocks(world, generationBox);
+    }
+
+    private static void queuePastCityBuild(PastCityInstance city, AncientCityTrialPortal.FrameTarget sourceFrame, BlockBox immediateBox) {
+        if (PENDING_CITY_BUILDS.containsKey(city.key())) {
+            return;
+        }
+
+        Deque<Long> chunks = new ArrayDeque<>();
+        for (ChunkPos chunkPos : city.pastCityBox().streamChunkPos().toList()) {
+            BlockBox chunkBox = chunkBlockBox(chunkPos, Integer.MIN_VALUE, Integer.MAX_VALUE);
+            if (!chunkBox.intersects(immediateBox)) {
+                chunks.addLast(chunkPos.toLong());
+            }
+        }
+
+        if (!chunks.isEmpty()) {
+            PENDING_CITY_BUILDS.put(city.key(), new PendingPastCityBuild(sourceFrame, city, chunks));
+        }
+    }
+
+    private static void buildQueuedPastCityChunks(ServerWorld world) {
+        if (!isAncientPastWorld(world) || PENDING_CITY_BUILDS.isEmpty()) {
+            return;
+        }
+
+        int processed = 0;
+        Iterator<PendingPastCityBuild> builds = PENDING_CITY_BUILDS.values().iterator();
+        while (builds.hasNext() && processed < PAST_CITY_BUILD_CHUNKS_PER_TICK) {
+            PendingPastCityBuild build = builds.next();
+            Long chunkPos = build.chunks().pollFirst();
+            if (chunkPos == null) {
+                builds.remove();
+                continue;
+            }
+
+            WorldChunk chunk = world.getChunk(ChunkPos.getPackedX(chunkPos), ChunkPos.getPackedZ(chunkPos));
+            BlockBox chunkBox = chunkBlockBox(world, chunk);
+            shapePastCityCavern(world, build.city(), chunkBox);
+            adaptPastCityTerrain(world, build.city(), chunkBox);
+            AncientCityBuildHelper.generateShiftedAncientCity(
+                    world,
+                    build.sourceFrame(),
+                    0,
+                    PAST_CITY_Y_OFFSET,
+                    0,
+                    chunkBox,
+                    world.getSeed() ^ build.city().sourceAltarPos().asLong() ^ chunkPos
+            );
+            cleanPristineBlocks(world, chunkBox);
+            enforcePastBedrockBounds(world, chunk);
+            processed++;
+
+            if (build.chunks().isEmpty()) {
+                builds.remove();
+            }
+        }
     }
 
     private static void ensurePastPortals(ServerWorld world, PastCityInstance city) {
@@ -264,6 +378,7 @@ public final class AncientPastManager {
             return;
         }
 
+        enforcePastBedrockBounds(world, chunk);
         PENDING_PRISTINE_CHUNKS.add(chunk.getPos().toLong());
     }
 
@@ -287,6 +402,7 @@ public final class AncientPastManager {
     }
 
     private static void cleanPastChunk(ServerWorld world, WorldChunk chunk) {
+        enforcePastBedrockBounds(world, chunk);
         List<BlockReplacement> replacements = new ArrayList<>();
         chunk.forEachBlockMatchingPredicate(
                 state -> pristineReplacement(state) != null,
@@ -300,6 +416,276 @@ public final class AncientPastManager {
 
         for (BlockReplacement replacement : replacements) {
             world.setBlockState(replacement.pos(), replacement.state(), AncientCityBuildHelper.BULK_BLOCK_FLAGS);
+        }
+    }
+
+    private static void adaptPastCityTerrain(ServerWorld world, PastCityInstance city, BlockBox limitBox) {
+        List<PastTerrainPiece> terrainPieces = city.pastTerrainPieces().isEmpty()
+                ? city.pastPieceBoxes().stream().map(box -> new PastTerrainPiece(box, 0)).toList()
+                : city.pastTerrainPieces();
+        for (PastTerrainPiece terrainPiece : terrainPieces) {
+            if (!terrainPiece.box().intersects(limitBox)) {
+                continue;
+            }
+
+            BlockBox adaptationBox = intersectBoxes(
+                    pieceTerrainAdaptationBox(terrainPiece.box()),
+                    limitBox,
+                    world.getBottomY(),
+                    world.getTopYInclusive()
+            );
+            if (adaptationBox != null) {
+                adaptNaturalTerrainBlocks(world, terrainPiece, adaptationBox);
+            }
+        }
+    }
+
+    private static void shapePastCityCavern(ServerWorld world, PastCityInstance city, BlockBox limitBox) {
+        BlockBox cavernBox = intersectBoxes(
+                pastCityCavernBox(city),
+                limitBox,
+                world.getBottomY(),
+                world.getTopYInclusive()
+        );
+        if (cavernBox == null) {
+            return;
+        }
+
+        BlockState air = Blocks.AIR.getDefaultState();
+        BlockBox cityBox = city.pastCityBox();
+        List<BlockBox> pieceBoxes = city.pastPieceBoxes().isEmpty() ? List.of(cityBox) : city.pastPieceBoxes();
+        BlockPos.Mutable pos = new BlockPos.Mutable();
+        long salt = city.sourceAltarPos().asLong();
+        for (int x = cavernBox.getMinX(); x <= cavernBox.getMaxX(); x++) {
+            for (int z = cavernBox.getMinZ(); z <= cavernBox.getMaxZ(); z++) {
+                double edge = horizontalDistanceOutside(pieceBoxes, x, z) / PAST_CITY_CAVERN_HORIZONTAL_MARGIN;
+                if (edge > 1.12) {
+                    continue;
+                }
+
+                double columnNoise = terrainNoise(x, 0, z, salt);
+                int floorY = cityBox.getMinY() - PAST_CITY_CAVERN_FLOOR_DEPTH + (int) Math.round(columnNoise * 2.0);
+                int ceilingY = cityBox.getMaxY() + PAST_CITY_CAVERN_CEILING_MARGIN
+                        + (int) Math.round(terrainNoise(x, 17, z, salt) * 8.0)
+                        - (int) Math.round(Math.max(0.0, edge - 0.4) * 22.0);
+                if (floorY > ceilingY) {
+                    continue;
+                }
+
+                for (int y = Math.max(cavernBox.getMinY(), floorY); y <= Math.min(cavernBox.getMaxY(), ceilingY); y++) {
+                    double verticalNoise = terrainNoise(x, y >> 3, z, salt ^ 0x6D2B79F5L);
+                    double boundary = edge + verticalNoise * 0.16;
+                    if (boundary <= 1.0) {
+                        pos.set(x, y, z);
+                        BlockState state = world.getBlockState(pos);
+                        if (isNaturalTerrain(state)) {
+                            world.setBlockState(pos, air, AncientCityBuildHelper.BULK_BLOCK_FLAGS);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static BlockBox pastCityCavernBox(PastCityInstance city) {
+        BlockBox cityBox = city.pastCityBox();
+        return new BlockBox(
+                cityBox.getMinX() - PAST_CITY_CAVERN_HORIZONTAL_MARGIN,
+                cityBox.getMinY() - PAST_CITY_CAVERN_FLOOR_DEPTH,
+                cityBox.getMinZ() - PAST_CITY_CAVERN_HORIZONTAL_MARGIN,
+                cityBox.getMaxX() + PAST_CITY_CAVERN_HORIZONTAL_MARGIN,
+                cityBox.getMaxY() + PAST_CITY_CAVERN_CEILING_MARGIN,
+                cityBox.getMaxZ() + PAST_CITY_CAVERN_HORIZONTAL_MARGIN
+        );
+    }
+
+    private static double horizontalDistanceOutside(BlockBox box, int x, int z) {
+        int dx = Math.max(0, Math.max(box.getMinX() - x, x - box.getMaxX()));
+        int dz = Math.max(0, Math.max(box.getMinZ() - z, z - box.getMaxZ()));
+        return Math.sqrt(dx * dx + dz * dz);
+    }
+
+    private static double horizontalDistanceOutside(List<BlockBox> boxes, int x, int z) {
+        int bestSquaredDistance = Integer.MAX_VALUE;
+        for (BlockBox box : boxes) {
+            int dx = Math.max(0, Math.max(box.getMinX() - x, x - box.getMaxX()));
+            int dz = Math.max(0, Math.max(box.getMinZ() - z, z - box.getMaxZ()));
+            int squaredDistance = dx * dx + dz * dz;
+            if (squaredDistance == 0) {
+                return 0.0;
+            }
+            if (squaredDistance < bestSquaredDistance) {
+                bestSquaredDistance = squaredDistance;
+            }
+        }
+        return Math.sqrt(bestSquaredDistance);
+    }
+
+    private static BlockBox pieceTerrainAdaptationBox(BlockBox pieceBox) {
+        return new BlockBox(
+                pieceBox.getMinX() - PAST_CITY_TERRAIN_ADAPTATION_RADIUS,
+                pieceBox.getMinY() - PAST_CITY_TERRAIN_ADAPTATION_RADIUS,
+                pieceBox.getMinZ() - PAST_CITY_TERRAIN_ADAPTATION_RADIUS,
+                pieceBox.getMaxX() + PAST_CITY_TERRAIN_ADAPTATION_RADIUS,
+                pieceBox.getMaxY() + PAST_CITY_TERRAIN_ADAPTATION_RADIUS,
+                pieceBox.getMaxZ() + PAST_CITY_TERRAIN_ADAPTATION_RADIUS
+        );
+    }
+
+    private static void adaptNaturalTerrainBlocks(ServerWorld world, PastTerrainPiece terrainPiece, BlockBox box) {
+        BlockState air = Blocks.AIR.getDefaultState();
+        BlockState solid = cityTerrainFillState(terrainPiece.box().getMinY());
+        BlockPos.Mutable pos = new BlockPos.Mutable();
+        for (int x = box.getMinX(); x <= box.getMaxX(); x++) {
+            for (int y = box.getMinY(); y <= box.getMaxY(); y++) {
+                for (int z = box.getMinZ(); z <= box.getMaxZ(); z++) {
+                    double weight = sampleBeardBoxWeight(terrainPiece, x, y, z);
+                    pos.set(x, y, z);
+                    BlockState state = world.getBlockState(pos);
+                    if (weight < PAST_CITY_TERRAIN_CLEAR_THRESHOLD && isNaturalTerrain(state)) {
+                        world.setBlockState(pos, air, AncientCityBuildHelper.BULK_BLOCK_FLAGS);
+                    } else if (weight > PAST_CITY_TERRAIN_FILL_THRESHOLD && canFillWithNaturalTerrain(state)) {
+                        world.setBlockState(pos, solid, AncientCityBuildHelper.BULK_BLOCK_FLAGS);
+                    }
+                }
+            }
+        }
+    }
+
+    private static double sampleBeardBoxWeight(PastTerrainPiece terrainPiece, int x, int y, int z) {
+        BlockBox box = terrainPiece.box();
+        int xDistance = Math.max(0, Math.max(box.getMinX() - x, x - box.getMaxX()));
+        int zDistance = Math.max(0, Math.max(box.getMinZ() - z, z - box.getMaxZ()));
+        int groundY = box.getMinY() + terrainPiece.groundLevelDelta();
+        int yDistance = y - groundY;
+        return getStructureWeight(xDistance, yDistance, zDistance, yDistance) * 0.8;
+    }
+
+    private static double getStructureWeight(int x, int y, int z, int yDelta) {
+        if (!isStructureWeightIndexInBounds(x + PAST_CITY_TERRAIN_ADAPTATION_RADIUS)
+                || !isStructureWeightIndexInBounds(y + PAST_CITY_TERRAIN_ADAPTATION_RADIUS)
+                || !isStructureWeightIndexInBounds(z + PAST_CITY_TERRAIN_ADAPTATION_RADIUS)) {
+            return 0.0;
+        }
+
+        double adjustedY = yDelta + 0.5;
+        double inverseMagnitude = 1.0 / Math.sqrt((x * x + adjustedY * adjustedY + z * z) / 2.0);
+        double signAndDistance = -adjustedY * inverseMagnitude / 2.0;
+        double vanillaTableWeight = Math.exp(-(x * x + (y + 0.5) * (y + 0.5) + z * z) / 16.0);
+        return signAndDistance * vanillaTableWeight;
+    }
+
+    private static boolean isStructureWeightIndexInBounds(int index) {
+        return index >= 0 && index < PAST_CITY_TERRAIN_ADAPTATION_RADIUS * 2;
+    }
+
+    private static double terrainNoise(int x, int y, int z, long salt) {
+        int scale = 12;
+        int gridX = Math.floorDiv(x, scale);
+        int gridZ = Math.floorDiv(z, scale);
+        double localX = smoothStep(Math.floorMod(x, scale) / (double) scale);
+        double localZ = smoothStep(Math.floorMod(z, scale) / (double) scale);
+        double northWest = rawTerrainNoise(gridX, y, gridZ, salt);
+        double northEast = rawTerrainNoise(gridX + 1, y, gridZ, salt);
+        double southWest = rawTerrainNoise(gridX, y, gridZ + 1, salt);
+        double southEast = rawTerrainNoise(gridX + 1, y, gridZ + 1, salt);
+        return lerp(lerp(northWest, northEast, localX), lerp(southWest, southEast, localX), localZ);
+    }
+
+    private static double rawTerrainNoise(int x, int y, int z, long salt) {
+        long value = salt;
+        value ^= x * 0x9E3779B97F4A7C15L;
+        value ^= y * 0xC2B2AE3D27D4EB4FL;
+        value ^= z * 0x165667B19E3779F9L;
+        value = (value ^ (value >>> 30)) * 0xBF58476D1CE4E5B9L;
+        value = (value ^ (value >>> 27)) * 0x94D049BB133111EBL;
+        value ^= value >>> 31;
+        return ((value >>> 11) * 0x1.0p-53) * 2.0 - 1.0;
+    }
+
+    private static double smoothStep(double value) {
+        return value * value * (3.0 - 2.0 * value);
+    }
+
+    private static double lerp(double start, double end, double delta) {
+        return start + (end - start) * delta;
+    }
+
+    private static void clearNaturalTerrainBlocks(ServerWorld world, BlockBox box) {
+        BlockState air = Blocks.AIR.getDefaultState();
+        BlockPos.Mutable pos = new BlockPos.Mutable();
+        for (int x = box.getMinX(); x <= box.getMaxX(); x++) {
+            for (int y = box.getMinY(); y <= box.getMaxY(); y++) {
+                for (int z = box.getMinZ(); z <= box.getMaxZ(); z++) {
+                    pos.set(x, y, z);
+                    BlockState state = world.getBlockState(pos);
+                    if (isNaturalTerrain(state)) {
+                        world.setBlockState(pos, air, AncientCityBuildHelper.BULK_BLOCK_FLAGS);
+                    }
+                }
+            }
+        }
+    }
+
+    private static boolean isNaturalTerrain(BlockState state) {
+        return state.isIn(BlockTags.BASE_STONE_OVERWORLD)
+                || state.isIn(BlockTags.OVERWORLD_CARVER_REPLACEABLES)
+                || state.isIn(BlockTags.DIRT)
+                || state.isIn(BlockTags.SAND)
+                || state.isOf(Blocks.GRAVEL)
+                || state.isOf(Blocks.TUFF)
+                || state.isOf(Blocks.CALCITE)
+                || state.isOf(Blocks.DRIPSTONE_BLOCK)
+                || state.isOf(Blocks.POINTED_DRIPSTONE)
+                || !state.getFluidState().isEmpty();
+    }
+
+    private static boolean canFillWithNaturalTerrain(BlockState state) {
+        return state.isAir() || !state.getFluidState().isEmpty();
+    }
+
+    private static BlockState cityTerrainFillState(int y) {
+        return y < 8 ? Blocks.DEEPSLATE.getDefaultState() : Blocks.STONE.getDefaultState();
+    }
+
+    private static BlockBox intersectBoxes(BlockBox first, BlockBox second, int minY, int maxY) {
+        int minX = Math.max(first.getMinX(), second.getMinX());
+        int minBoxY = Math.max(Math.max(first.getMinY(), second.getMinY()), minY);
+        int minZ = Math.max(first.getMinZ(), second.getMinZ());
+        int maxX = Math.min(first.getMaxX(), second.getMaxX());
+        int maxBoxY = Math.min(Math.min(first.getMaxY(), second.getMaxY()), maxY);
+        int maxZ = Math.min(first.getMaxZ(), second.getMaxZ());
+        if (minX > maxX || minBoxY > maxBoxY || minZ > maxZ) {
+            return null;
+        }
+        return new BlockBox(minX, minBoxY, minZ, maxX, maxBoxY, maxZ);
+    }
+
+    private static BlockBox chunkBlockBox(ServerWorld world, WorldChunk chunk) {
+        return chunkBlockBox(chunk.getPos(), world.getBottomY(), world.getTopYInclusive());
+    }
+
+    private static BlockBox chunkBlockBox(ChunkPos chunkPos, int minY, int maxY) {
+        return new BlockBox(chunkPos.getStartX(), minY, chunkPos.getStartZ(), chunkPos.getEndX(), maxY, chunkPos.getEndZ());
+    }
+
+    private static void enforcePastBedrockBounds(ServerWorld world, WorldChunk chunk) {
+        BlockState bedrock = Blocks.BEDROCK.getDefaultState();
+        BlockPos.Mutable pos = new BlockPos.Mutable();
+        int startX = chunk.getPos().getStartX();
+        int startZ = chunk.getPos().getStartZ();
+        int bottomY = world.getBottomY();
+        int topY = world.getTopYInclusive();
+
+        for (int localX = 0; localX < 16; localX++) {
+            for (int localZ = 0; localZ < 16; localZ++) {
+                int x = startX + localX;
+                int z = startZ + localZ;
+                for (int layer = 0; layer < PAST_BEDROCK_LAYER_THICKNESS; layer++) {
+                    chunk.setBlockState(pos.set(x, bottomY + layer, z), bedrock, AncientCityBuildHelper.BULK_BLOCK_FLAGS);
+                    chunk.setBlockState(pos.set(x, topY - layer, z), bedrock, AncientCityBuildHelper.BULK_BLOCK_FLAGS);
+                }
+            }
         }
     }
 
@@ -420,6 +806,26 @@ public final class AncientPastManager {
         world.setBlockState(feet.up(), Blocks.AIR.getDefaultState(), Block.NOTIFY_ALL);
     }
 
+    private static void prepareArrivalArea(ServerWorld world, BlockPos feet) {
+        BlockBox clearBox = AncientCityBuildHelper.boxAround(
+                feet,
+                PAST_ARRIVAL_CLEAR_RADIUS,
+                PAST_ARRIVAL_CLEAR_DOWN,
+                PAST_ARRIVAL_CLEAR_UP
+        );
+        AncientCityBuildHelper.loadChunks(world, clearBox);
+        clearNaturalTerrainBlocks(world, clearBox);
+
+        BlockState floor = Blocks.POLISHED_DEEPSLATE.getDefaultState();
+        BlockPos.Mutable pos = new BlockPos.Mutable();
+        int floorY = feet.getY() - 1;
+        for (int x = feet.getX() - PAST_ARRIVAL_FLOOR_RADIUS; x <= feet.getX() + PAST_ARRIVAL_FLOOR_RADIUS; x++) {
+            for (int z = feet.getZ() - PAST_ARRIVAL_FLOOR_RADIUS; z <= feet.getZ() + PAST_ARRIVAL_FLOOR_RADIUS; z++) {
+                world.setBlockState(pos.set(x, floorY, z), floor, AncientCityBuildHelper.BULK_BLOCK_FLAGS);
+            }
+        }
+    }
+
     private static void spawnVillagers(ServerWorld world, BlockBox cityBox, long salt) {
         Random random = Random.create(world.getSeed() ^ salt ^ 0x5A17C1A7L);
         int targetCount = VILLAGER_MIN + random.nextInt(VILLAGER_RANDOM_BOUND);
@@ -492,5 +898,12 @@ public final class AncientPastManager {
     }
 
     private record BlockReplacement(BlockPos pos, BlockState state) {
+    }
+
+    private record PendingPastCityBuild(
+            AncientCityTrialPortal.FrameTarget sourceFrame,
+            PastCityInstance city,
+            Deque<Long> chunks
+    ) {
     }
 }

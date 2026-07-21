@@ -87,9 +87,16 @@ public final class AncientPastState extends PersistentState {
             BlockPos pastSpawn,
             BlockPos trialReturnSpawn,
             BlockBox pastCityBox,
+            List<BlockBox> pastPieceBoxes,
+            List<PastTerrainPiece> pastTerrainPieces,
             int layoutVersion,
             boolean generated
     ) {
+        private static final Codec<PastTerrainPiece> TERRAIN_PIECE_CODEC = RecordCodecBuilder.create(builder -> builder.group(
+                BlockBox.CODEC.fieldOf("box").forGetter(PastTerrainPiece::box),
+                Codec.INT.fieldOf("ground_level_delta").forGetter(PastTerrainPiece::groundLevelDelta)
+        ).apply(builder, PastTerrainPiece::new));
+
         private static final Codec<PastCityInstance> CODEC = RecordCodecBuilder.create(builder -> builder.group(
                 Identifier.CODEC.fieldOf("source_world").forGetter(PastCityInstance::sourceWorld),
                 BlockPos.CODEC.fieldOf("source_altar_pos").forGetter(PastCityInstance::sourceAltarPos),
@@ -103,6 +110,8 @@ public final class AncientPastState extends PersistentState {
                 BlockPos.CODEC.fieldOf("past_spawn").forGetter(PastCityInstance::pastSpawn),
                 BlockPos.CODEC.fieldOf("trial_return_spawn").forGetter(PastCityInstance::trialReturnSpawn),
                 BlockBox.CODEC.fieldOf("enclosure_box").forGetter(PastCityInstance::pastCityBox),
+                BlockBox.CODEC.listOf().optionalFieldOf("piece_boxes", List.of()).forGetter(PastCityInstance::pastPieceBoxes),
+                TERRAIN_PIECE_CODEC.listOf().optionalFieldOf("terrain_pieces", List.of()).forGetter(PastCityInstance::pastTerrainPieces),
                 Codec.INT.optionalFieldOf("layout_version", 0).forGetter(PastCityInstance::layoutVersion),
                 Codec.BOOL.optionalFieldOf("generated", false).forGetter(PastCityInstance::generated)
         ).apply(builder, PastCityInstance::new));
@@ -125,9 +134,14 @@ public final class AncientPastState extends PersistentState {
                     pastSpawn,
                     trialReturnSpawn,
                     pastCityBox,
+                    List.copyOf(pastPieceBoxes),
+                    List.copyOf(pastTerrainPieces),
                     layoutVersion,
                     generated
             );
         }
+    }
+
+    public record PastTerrainPiece(BlockBox box, int groundLevelDelta) {
     }
 }

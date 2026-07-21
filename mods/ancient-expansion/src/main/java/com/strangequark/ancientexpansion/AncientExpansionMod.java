@@ -33,10 +33,10 @@ public final class AncientExpansionMod implements ModInitializer {
         AncientExpansionLootTables.register();
         AncientMazeVillagers.register();
         AncientEnchantmentLogic.register();
-        AncientPastManager.register();
-        AncientCityTrialManager.register();
         ModStructurePieces.registerStructurePieces();
         ModStructureTypes.registerStructureTypes();
+        AncientPastManager.register();
+        AncientCityTrialManager.register();
         LOGGER.info("QuarkMod Ancient Expansion init success");
     }
 }
