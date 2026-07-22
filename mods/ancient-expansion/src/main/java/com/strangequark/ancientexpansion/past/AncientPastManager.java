@@ -29,6 +29,7 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockBox;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.ChunkPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.random.Random;
@@ -38,6 +39,7 @@ import net.minecraft.world.chunk.WorldChunk;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -45,11 +47,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 public final class AncientPastManager {
     public static final RegistryKey<World> ANCIENT_PAST_WORLD = RegistryKey.of(RegistryKeys.WORLD, AncientExpansionMod.id("ancient_past"));
 
-    private static final int PAST_CITY_LAYOUT_VERSION = 12;
+    private static final int PAST_CITY_LAYOUT_VERSION = 16;
     private static final int VANILLA_ANCIENT_CITY_START_HEIGHT = -27;
     private static final int PAST_ANCIENT_CITY_START_HEIGHT = 250;
     private static final int PAST_CITY_Y_OFFSET = PAST_ANCIENT_CITY_START_HEIGHT - VANILLA_ANCIENT_CITY_START_HEIGHT;
@@ -57,16 +60,18 @@ public final class AncientPastManager {
     private static final int PAST_CITY_BOOTSTRAP_DOWN = 24;
     private static final int PAST_CITY_BOOTSTRAP_UP = 48;
     private static final int TRIAL_PORTAL_WIDTH = 3;
-    private static final int TRIAL_PORTAL_HEIGHT = 4;
+    private static final int TRIAL_PORTAL_HEIGHT = 2;
     private static final int REDSTONE_ROOM_MIN_X = 1;
     private static final int REDSTONE_ROOM_MAX_X = 15;
     private static final int REDSTONE_ROOM_MIN_Y = 2;
-    private static final int REDSTONE_ROOM_MAX_Y = 11;
     private static final int REDSTONE_ROOM_MIN_Z = 1;
     private static final int REDSTONE_ROOM_MAX_Z = 32;
     private static final int REDSTONE_ROOM_PORTAL_Z = 6;
     private static final int REDSTONE_ROOM_PORTAL_CENTER_X = 8;
     private static final int REDSTONE_ROOM_PORTAL_BASE_Y = 4;
+    private static final int REDSTONE_TRIAL_ROOM_CLEAR_MAX_Y = 6;
+    private static final int REDSTONE_ROOM_CEILING_MIN_Y = 7;
+    private static final int REDSTONE_ROOM_CEILING_MAX_Y = 8;
     private static final int VILLAGER_MIN = 40;
     private static final int VILLAGER_RANDOM_BOUND = 21;
     private static final int VILLAGER_ATTEMPTS = 9000;
@@ -81,12 +86,9 @@ public final class AncientPastManager {
     private static final int PAST_CITY_TERRAIN_ADAPTATION_RADIUS = 12;
     private static final double PAST_CITY_TERRAIN_CLEAR_THRESHOLD = -0.035;
     private static final double PAST_CITY_TERRAIN_FILL_THRESHOLD = 0.06;
-    private static final int PAST_ARRIVAL_CLEAR_RADIUS = 5;
-    private static final int PAST_ARRIVAL_CLEAR_DOWN = 1;
-    private static final int PAST_ARRIVAL_CLEAR_UP = 4;
-    private static final int PAST_ARRIVAL_FLOOR_RADIUS = 1;
     private static final Set<Long> PENDING_PRISTINE_CHUNKS = new HashSet<>();
     private static final Map<String, PendingPastCityBuild> PENDING_CITY_BUILDS = new LinkedHashMap<>();
+    private static final Map<UUID, PortalSuppression> PORTAL_SUPPRESSIONS = new HashMap<>();
 
     private AncientPastManager() {
     }
@@ -97,12 +99,16 @@ public final class AncientPastManager {
         ServerTickEvents.END_WORLD_TICK.register(world -> {
             cleanQueuedPastChunks(world);
             buildQueuedPastCityChunks(world);
+            tickPortalSuppressions(world);
         });
     }
 
     public static boolean handlePortalCollision(ServerPlayerEntity player, BlockPos portalPos) {
         if (player.isSpectator() || !AncientCityTrialPortal.isPortalBlock(player.getWorld().getBlockState(portalPos))) {
             return false;
+        }
+        if (isPortalSuppressed(player, portalPos)) {
+            return true;
         }
 
         ServerWorld world = player.getWorld();
@@ -144,6 +150,7 @@ public final class AncientPastManager {
         ensurePastPortals(pastWorld, city);
 
         ServerPlayerEntity teleported = AncientCityBuildHelper.teleport(player, pastWorld, city.pastSpawn().toBottomCenterPos(), player.getYaw(), player.getPitch());
+        suppressPortalUntilExit(teleported, city.mainPortalPositions());
         teleported.playSoundToPlayer(SoundEvents.BLOCK_PORTAL_TRAVEL, SoundCategory.PLAYERS, 0.65F, 0.85F);
     }
 
@@ -170,6 +177,7 @@ public final class AncientPastManager {
 
         AncientCityBuildHelper.loadChunks(sourceWorld, AncientCityBuildHelper.boxAround(city.sourceReturnSpawn(), 2, 2, 3));
         ServerPlayerEntity teleported = AncientCityBuildHelper.teleport(player, sourceWorld, city.sourceReturnSpawn().toBottomCenterPos(), player.getYaw(), player.getPitch());
+        suppressPortalUntilExit(teleported, sourcePortalPositions(city));
         teleported.playSoundToPlayer(SoundEvents.BLOCK_PORTAL_TRAVEL, SoundCategory.PLAYERS, 0.65F, 1.0F);
     }
 
@@ -207,7 +215,7 @@ public final class AncientPastManager {
 
     private static PastCityInstance createCityInstance(Identifier sourceWorldId, AncientCityTrialPortal.FrameTarget sourceFrame) {
         int offsetY = PAST_CITY_Y_OFFSET;
-        BlockPos pastAltarPos = shiftToPast(sourceFrame.altarPos(), offsetY);
+        List<BlockPos> pastPortalPositions = shiftToPast(sourceFrame.portalPositions(), offsetY);
         BlockBox pastCityBox = AncientCityBuildHelper.offsetBox(sourceFrame.cityBoundingBox(), 0, offsetY, 0);
         TrialPortalRoomPlan trialRoom = createTrialPortalRoomPlan(sourceFrame, offsetY);
         List<PastTerrainPiece> pastTerrainPieces = collectPastTerrainPieces(sourceFrame, offsetY);
@@ -217,13 +225,13 @@ public final class AncientPastManager {
                 sourceWorldId,
                 sourceFrame.altarPos(),
                 sourceFrame.cityBoundingBox(),
-                sourceFrame.altarPos().up(2),
+                portalLandingPos(sourceFrame.portalPositions()),
                 sourceFrame.portalAxis(),
                 sourceFrame.portalFrontDirection(),
-                shiftToPast(sourceFrame.portalPositions(), offsetY),
+                pastPortalPositions,
                 trialRoom.portalAxis(),
                 trialRoom.portalPositions(),
-                pastAltarPos.up(2),
+                portalLandingPos(pastPortalPositions),
                 trialRoom.returnSpawn(),
                 pastCityBox,
                 pastPieceBoxes,
@@ -254,6 +262,79 @@ public final class AncientPastManager {
         return List.copyOf(shifted);
     }
 
+    private static List<BlockPos> sourcePortalPositions(PastCityInstance city) {
+        List<BlockPos> positions = new ArrayList<>(city.mainPortalPositions().size());
+        for (BlockPos pos : city.mainPortalPositions()) {
+            positions.add(pos.add(0, -PAST_CITY_Y_OFFSET, 0));
+        }
+        return List.copyOf(positions);
+    }
+
+    private static BlockPos portalLandingPos(List<BlockPos> portalPositions) {
+        if (portalPositions.isEmpty()) {
+            return BlockPos.ORIGIN;
+        }
+
+        int minY = portalPositions.stream().mapToInt(BlockPos::getY).min().orElse(portalPositions.getFirst().getY());
+        double centerX = portalPositions.stream().mapToDouble(BlockPos::getX).average().orElse(portalPositions.getFirst().getX());
+        double centerZ = portalPositions.stream().mapToDouble(BlockPos::getZ).average().orElse(portalPositions.getFirst().getZ());
+        return portalPositions.stream()
+                .filter(pos -> pos.getY() == minY)
+                .min((first, second) -> Double.compare(horizontalDistanceSquared(first, centerX, centerZ), horizontalDistanceSquared(second, centerX, centerZ)))
+                .orElse(portalPositions.getFirst());
+    }
+
+    private static double horizontalDistanceSquared(BlockPos pos, double x, double z) {
+        double dx = pos.getX() - x;
+        double dz = pos.getZ() - z;
+        return dx * dx + dz * dz;
+    }
+
+    private static boolean isPortalSuppressed(ServerPlayerEntity player, BlockPos portalPos) {
+        PortalSuppression suppression = PORTAL_SUPPRESSIONS.get(player.getUuid());
+        if (suppression == null) {
+            return false;
+        }
+        if (!player.getWorld().getRegistryKey().equals(suppression.world())) {
+            PORTAL_SUPPRESSIONS.remove(player.getUuid());
+            return false;
+        }
+        if (suppression.portalPositions().contains(portalPos)) {
+            return true;
+        }
+        if (!isPlayerTouchingSuppressedPortal(player, suppression)) {
+            PORTAL_SUPPRESSIONS.remove(player.getUuid());
+        }
+        return false;
+    }
+
+    private static void suppressPortalUntilExit(ServerPlayerEntity player, List<BlockPos> portalPositions) {
+        if (!portalPositions.isEmpty()) {
+            PORTAL_SUPPRESSIONS.put(player.getUuid(), new PortalSuppression(player.getWorld().getRegistryKey(), Set.copyOf(portalPositions)));
+        }
+    }
+
+    private static void tickPortalSuppressions(ServerWorld world) {
+        for (ServerPlayerEntity player : world.getPlayers()) {
+            PortalSuppression suppression = PORTAL_SUPPRESSIONS.get(player.getUuid());
+            if (suppression != null
+                    && world.getRegistryKey().equals(suppression.world())
+                    && !isPlayerTouchingSuppressedPortal(player, suppression)) {
+                PORTAL_SUPPRESSIONS.remove(player.getUuid());
+            }
+        }
+    }
+
+    private static boolean isPlayerTouchingSuppressedPortal(ServerPlayerEntity player, PortalSuppression suppression) {
+        Box playerBox = player.getBoundingBox().expand(1.0E-4D);
+        for (BlockPos portalPos : suppression.portalPositions()) {
+            if (AncientCityTrialPortal.isPortalBlock(player.getWorld().getBlockState(portalPos)) && playerBox.intersects(new Box(portalPos))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static PastCityInstance ensurePastCityPrepared(
             AncientPastState state,
             ServerWorld pastWorld,
@@ -278,8 +359,6 @@ public final class AncientPastManager {
             city = state.put(city.withGenerated(true));
         }
 
-        prepareArrivalArea(pastWorld, city.pastSpawn());
-        prepareStandingSpot(pastWorld, city.trialReturnSpawn());
         ensurePastPortals(pastWorld, city);
         return city;
     }
@@ -759,23 +838,86 @@ public final class AncientPastManager {
     }
 
     private static void buildRedstoneTrialPortalRoom(ServerWorld world, AncientCityTrialPortal.FrameTarget sourceFrame, PastCityInstance city) {
-        BlockState floor = Blocks.POLISHED_DEEPSLATE.getDefaultState();
         BlockState air = Blocks.AIR.getDefaultState();
+        BlockState carpet = Blocks.RED_CARPET.getDefaultState();
         BlockPos.Mutable pos = new BlockPos.Mutable();
+
+        repairRedstoneRoomCeiling(world, sourceFrame);
+
+        for (int x = REDSTONE_ROOM_MIN_X + 1; x <= REDSTONE_ROOM_MAX_X - 1; x++) {
+            for (int y = REDSTONE_ROOM_MIN_Y + 1; y <= REDSTONE_TRIAL_ROOM_CLEAR_MAX_Y; y++) {
+                for (int z = REDSTONE_ROOM_MIN_Z + 1; z <= REDSTONE_ROOM_MAX_Z - 1; z++) {
+                    BlockPos clearPos = transformCityCenterLocalToPast(sourceFrame, new BlockPos(x, y, z), PAST_CITY_Y_OFFSET);
+                    pos.set(clearPos.getX(), clearPos.getY(), clearPos.getZ());
+                    if (shouldClearRedstoneRoomInteriorBlock(world.getBlockState(pos))) {
+                        setBlockStateRemovingBlockEntity(world, pos, air, AncientCityBuildHelper.BULK_BLOCK_FLAGS);
+                    }
+                }
+            }
+        }
 
         for (int x = REDSTONE_ROOM_MIN_X + 1; x <= REDSTONE_ROOM_MAX_X - 1; x++) {
             for (int z = REDSTONE_ROOM_MIN_Z + 1; z <= REDSTONE_ROOM_MAX_Z - 1; z++) {
                 BlockPos floorPos = transformCityCenterLocalToPast(sourceFrame, new BlockPos(x, REDSTONE_ROOM_MIN_Y, z), PAST_CITY_Y_OFFSET);
-                world.setBlockState(pos.set(floorPos.getX(), floorPos.getY(), floorPos.getZ()), floor, AncientCityBuildHelper.BULK_BLOCK_FLAGS);
-                for (int y = REDSTONE_ROOM_MIN_Y + 1; y <= REDSTONE_ROOM_MAX_Y; y++) {
-                    BlockPos clearPos = transformCityCenterLocalToPast(sourceFrame, new BlockPos(x, y, z), PAST_CITY_Y_OFFSET);
-                    world.setBlockState(pos.set(clearPos.getX(), clearPos.getY(), clearPos.getZ()), air, AncientCityBuildHelper.BULK_BLOCK_FLAGS);
+                BlockPos carpetPos = transformCityCenterLocalToPast(sourceFrame, new BlockPos(x, REDSTONE_ROOM_MIN_Y + 1, z), PAST_CITY_Y_OFFSET);
+                if (world.getBlockState(floorPos).isSolidBlock(world, floorPos) && world.getBlockState(carpetPos).isAir()) {
+                    setBlockStateRemovingBlockEntity(world, pos.set(carpetPos.getX(), carpetPos.getY(), carpetPos.getZ()), carpet, AncientCityBuildHelper.BULK_BLOCK_FLAGS);
                 }
             }
         }
 
         buildTrialPortalFrame(world, sourceFrame);
         AncientCityTrialPortal.placePortal(world, city.trialPortalPositions(), city.trialPortalAxis());
+    }
+
+    private static void repairRedstoneRoomCeiling(ServerWorld world, AncientCityTrialPortal.FrameTarget sourceFrame) {
+        BlockState ceiling = Blocks.DEEPSLATE_BRICKS.getDefaultState();
+        BlockPos.Mutable pos = new BlockPos.Mutable();
+        for (int x = REDSTONE_ROOM_MIN_X + 1; x <= REDSTONE_ROOM_MAX_X - 1; x++) {
+            for (int y = REDSTONE_ROOM_CEILING_MIN_Y; y <= REDSTONE_ROOM_CEILING_MAX_Y; y++) {
+                for (int z = REDSTONE_ROOM_MIN_Z + 1; z <= REDSTONE_ROOM_MAX_Z - 1; z++) {
+                    BlockPos ceilingPos = transformCityCenterLocalToPast(sourceFrame, new BlockPos(x, y, z), PAST_CITY_Y_OFFSET);
+                    pos.set(ceilingPos.getX(), ceilingPos.getY(), ceilingPos.getZ());
+                    if (shouldRepairRedstoneRoomCeilingBlock(world.getBlockState(pos))) {
+                        setBlockStateRemovingBlockEntity(world, pos, ceiling, AncientCityBuildHelper.BULK_BLOCK_FLAGS);
+                    }
+                }
+            }
+        }
+    }
+
+    private static boolean shouldClearRedstoneRoomInteriorBlock(BlockState state) {
+        return !state.isAir() && !isRedstoneRoomStructuralBlock(state);
+    }
+
+    private static boolean shouldRepairRedstoneRoomCeilingBlock(BlockState state) {
+        return state.isAir()
+                || AncientCityTrialPortal.isPortalBlock(state)
+                || state.isOf(Blocks.REINFORCED_DEEPSLATE);
+    }
+
+    private static boolean isRedstoneRoomStructuralBlock(BlockState state) {
+        return state.isIn(BlockTags.BASE_STONE_OVERWORLD)
+                || state.isOf(Blocks.REINFORCED_DEEPSLATE)
+                || state.isOf(Blocks.COBBLED_DEEPSLATE)
+                || state.isOf(Blocks.COBBLED_DEEPSLATE_SLAB)
+                || state.isOf(Blocks.COBBLED_DEEPSLATE_STAIRS)
+                || state.isOf(Blocks.COBBLED_DEEPSLATE_WALL)
+                || state.isOf(Blocks.POLISHED_DEEPSLATE)
+                || state.isOf(Blocks.POLISHED_DEEPSLATE_SLAB)
+                || state.isOf(Blocks.POLISHED_DEEPSLATE_STAIRS)
+                || state.isOf(Blocks.POLISHED_DEEPSLATE_WALL)
+                || state.isOf(Blocks.CHISELED_DEEPSLATE)
+                || state.isOf(Blocks.DEEPSLATE_BRICKS)
+                || state.isOf(Blocks.CRACKED_DEEPSLATE_BRICKS)
+                || state.isOf(Blocks.DEEPSLATE_BRICK_SLAB)
+                || state.isOf(Blocks.DEEPSLATE_BRICK_STAIRS)
+                || state.isOf(Blocks.DEEPSLATE_BRICK_WALL)
+                || state.isOf(Blocks.DEEPSLATE_TILES)
+                || state.isOf(Blocks.CRACKED_DEEPSLATE_TILES)
+                || state.isOf(Blocks.DEEPSLATE_TILE_SLAB)
+                || state.isOf(Blocks.DEEPSLATE_TILE_STAIRS)
+                || state.isOf(Blocks.DEEPSLATE_TILE_WALL);
     }
 
     private static void buildTrialPortalFrame(ServerWorld world, AncientCityTrialPortal.FrameTarget sourceFrame) {
@@ -793,37 +935,15 @@ public final class AncientPastManager {
                             new BlockPos(REDSTONE_ROOM_PORTAL_CENTER_X + width, REDSTONE_ROOM_PORTAL_BASE_Y + height, REDSTONE_ROOM_PORTAL_Z),
                             PAST_CITY_Y_OFFSET
                     );
-                    world.setBlockState(pos.set(framePos.getX(), framePos.getY(), framePos.getZ()), frame, Block.NOTIFY_ALL);
+                    setBlockStateRemovingBlockEntity(world, pos.set(framePos.getX(), framePos.getY(), framePos.getZ()), frame, Block.NOTIFY_ALL);
                 }
             }
         }
     }
 
-    private static void prepareStandingSpot(ServerWorld world, BlockPos feet) {
-        AncientCityBuildHelper.loadChunks(world, AncientCityBuildHelper.boxAround(feet, 1, 2, 2));
-        world.setBlockState(feet.down(), Blocks.POLISHED_DEEPSLATE.getDefaultState(), Block.NOTIFY_ALL);
-        world.setBlockState(feet, Blocks.AIR.getDefaultState(), Block.NOTIFY_ALL);
-        world.setBlockState(feet.up(), Blocks.AIR.getDefaultState(), Block.NOTIFY_ALL);
-    }
-
-    private static void prepareArrivalArea(ServerWorld world, BlockPos feet) {
-        BlockBox clearBox = AncientCityBuildHelper.boxAround(
-                feet,
-                PAST_ARRIVAL_CLEAR_RADIUS,
-                PAST_ARRIVAL_CLEAR_DOWN,
-                PAST_ARRIVAL_CLEAR_UP
-        );
-        AncientCityBuildHelper.loadChunks(world, clearBox);
-        clearNaturalTerrainBlocks(world, clearBox);
-
-        BlockState floor = Blocks.POLISHED_DEEPSLATE.getDefaultState();
-        BlockPos.Mutable pos = new BlockPos.Mutable();
-        int floorY = feet.getY() - 1;
-        for (int x = feet.getX() - PAST_ARRIVAL_FLOOR_RADIUS; x <= feet.getX() + PAST_ARRIVAL_FLOOR_RADIUS; x++) {
-            for (int z = feet.getZ() - PAST_ARRIVAL_FLOOR_RADIUS; z <= feet.getZ() + PAST_ARRIVAL_FLOOR_RADIUS; z++) {
-                world.setBlockState(pos.set(x, floorY, z), floor, AncientCityBuildHelper.BULK_BLOCK_FLAGS);
-            }
-        }
+    private static void setBlockStateRemovingBlockEntity(ServerWorld world, BlockPos pos, BlockState state, int flags) {
+        world.removeBlockEntity(pos);
+        world.setBlockState(pos, state, flags);
     }
 
     private static void spawnVillagers(ServerWorld world, BlockBox cityBox, long salt) {
@@ -898,6 +1018,9 @@ public final class AncientPastManager {
     }
 
     private record BlockReplacement(BlockPos pos, BlockState state) {
+    }
+
+    private record PortalSuppression(RegistryKey<World> world, Set<BlockPos> portalPositions) {
     }
 
     private record PendingPastCityBuild(

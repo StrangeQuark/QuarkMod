@@ -82,6 +82,7 @@ public final class AncientCityTrialPortal {
         BlockState portalState = portalBlock.getDefaultState()
                 .with(AncientTrialPortalBlock.AXIS, portalAxis);
         for (BlockPos portalPos : portalPositions) {
+            world.removeBlockEntity(portalPos);
             world.setBlockState(portalPos, portalState, Block.NOTIFY_ALL);
         }
     }
