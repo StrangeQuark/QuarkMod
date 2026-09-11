@@ -3,7 +3,7 @@
 	"id": "quarkmod",
 	"version": "${version}",
 	"name": "QuarkMod",
-	"description": "The complete QuarkMod bundle, including Grappling, Excavator, Loot Tweaks, Large Villages, the Dream Dimension, and Vampirism.",
+	"description": "The complete QuarkMod bundle, including Grappling, Excavator, Loot Tweaks, Village Builder, the Dream Dimension, and Vampirism.",
 	"authors": [
 		"StrangeQuark"
 	],
@@ -25,7 +25,7 @@
 			"file": "META-INF/jars/quarkmod-loot-tweaks-${version}.jar"
 		},
 		{
-			"file": "META-INF/jars/quarkmod-large-villages-${version}.jar"
+			"file": "META-INF/jars/quarkmod-village-builder-${version}.jar"
 		},
 		{
 			"file": "META-INF/jars/quarkmod-vampirism-${version}.jar"
@@ -42,7 +42,7 @@
 		"quarkmod_grappling": "*",
 		"quarkmod_excavator": "*",
 		"quarkmod_loot_tweaks": "*",
-		"quarkmod_large_villages": "*",
+		"quarkmod_village_builder": "*",
 		"quarkmod_vampirism": "*",
 		"quarkmod_dream_dimension": "*"
 	}

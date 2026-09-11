@@ -52,7 +52,7 @@ import java.util.UUID;
 public final class AncientPastManager {
     public static final RegistryKey<World> ANCIENT_PAST_WORLD = RegistryKey.of(RegistryKeys.WORLD, AncientExpansionMod.id("ancient_past"));
 
-    private static final int PAST_CITY_LAYOUT_VERSION = 16;
+    private static final int PAST_CITY_LAYOUT_VERSION = 17;
     private static final int VANILLA_ANCIENT_CITY_START_HEIGHT = -27;
     private static final int PAST_ANCIENT_CITY_START_HEIGHT = 250;
     private static final int PAST_CITY_Y_OFFSET = PAST_ANCIENT_CITY_START_HEIGHT - VANILLA_ANCIENT_CITY_START_HEIGHT;
@@ -67,8 +67,9 @@ public final class AncientPastManager {
     private static final int REDSTONE_ROOM_MIN_Z = 1;
     private static final int REDSTONE_ROOM_MAX_Z = 32;
     private static final int REDSTONE_ROOM_PORTAL_Z = 6;
-    private static final int REDSTONE_ROOM_PORTAL_CENTER_X = 8;
+    private static final int REDSTONE_ROOM_PORTAL_CENTER_X = 10;
     private static final int REDSTONE_ROOM_PORTAL_BASE_Y = 4;
+    private static final int REDSTONE_ROOM_CARPET_X_OFFSET = 2;
     private static final int REDSTONE_TRIAL_ROOM_CLEAR_MAX_Y = 6;
     private static final int REDSTONE_ROOM_CEILING_MIN_Y = 7;
     private static final int REDSTONE_ROOM_CEILING_MAX_Y = 8;
@@ -848,15 +849,12 @@ public final class AncientPastManager {
             for (int y = REDSTONE_ROOM_MIN_Y + 1; y <= REDSTONE_TRIAL_ROOM_CLEAR_MAX_Y; y++) {
                 for (int z = REDSTONE_ROOM_MIN_Z + 1; z <= REDSTONE_ROOM_MAX_Z - 1; z++) {
                     BlockPos clearPos = transformCityCenterLocalToPast(sourceFrame, new BlockPos(x, y, z), PAST_CITY_Y_OFFSET);
-                    pos.set(clearPos.getX(), clearPos.getY(), clearPos.getZ());
-                    if (shouldClearRedstoneRoomInteriorBlock(world.getBlockState(pos))) {
-                        setBlockStateRemovingBlockEntity(world, pos, air, AncientCityBuildHelper.BULK_BLOCK_FLAGS);
-                    }
+                    setBlockStateRemovingBlockEntity(world, pos.set(clearPos.getX(), clearPos.getY(), clearPos.getZ()), air, AncientCityBuildHelper.BULK_BLOCK_FLAGS);
                 }
             }
         }
 
-        for (int x = REDSTONE_ROOM_MIN_X + 1; x <= REDSTONE_ROOM_MAX_X - 1; x++) {
+        for (int x = REDSTONE_ROOM_MIN_X + 1 + REDSTONE_ROOM_CARPET_X_OFFSET; x <= REDSTONE_ROOM_MAX_X - 1; x++) {
             for (int z = REDSTONE_ROOM_MIN_Z + 1; z <= REDSTONE_ROOM_MAX_Z - 1; z++) {
                 BlockPos floorPos = transformCityCenterLocalToPast(sourceFrame, new BlockPos(x, REDSTONE_ROOM_MIN_Y, z), PAST_CITY_Y_OFFSET);
                 BlockPos carpetPos = transformCityCenterLocalToPast(sourceFrame, new BlockPos(x, REDSTONE_ROOM_MIN_Y + 1, z), PAST_CITY_Y_OFFSET);
@@ -886,38 +884,10 @@ public final class AncientPastManager {
         }
     }
 
-    private static boolean shouldClearRedstoneRoomInteriorBlock(BlockState state) {
-        return !state.isAir() && !isRedstoneRoomStructuralBlock(state);
-    }
-
     private static boolean shouldRepairRedstoneRoomCeilingBlock(BlockState state) {
         return state.isAir()
                 || AncientCityTrialPortal.isPortalBlock(state)
                 || state.isOf(Blocks.REINFORCED_DEEPSLATE);
-    }
-
-    private static boolean isRedstoneRoomStructuralBlock(BlockState state) {
-        return state.isIn(BlockTags.BASE_STONE_OVERWORLD)
-                || state.isOf(Blocks.REINFORCED_DEEPSLATE)
-                || state.isOf(Blocks.COBBLED_DEEPSLATE)
-                || state.isOf(Blocks.COBBLED_DEEPSLATE_SLAB)
-                || state.isOf(Blocks.COBBLED_DEEPSLATE_STAIRS)
-                || state.isOf(Blocks.COBBLED_DEEPSLATE_WALL)
-                || state.isOf(Blocks.POLISHED_DEEPSLATE)
-                || state.isOf(Blocks.POLISHED_DEEPSLATE_SLAB)
-                || state.isOf(Blocks.POLISHED_DEEPSLATE_STAIRS)
-                || state.isOf(Blocks.POLISHED_DEEPSLATE_WALL)
-                || state.isOf(Blocks.CHISELED_DEEPSLATE)
-                || state.isOf(Blocks.DEEPSLATE_BRICKS)
-                || state.isOf(Blocks.CRACKED_DEEPSLATE_BRICKS)
-                || state.isOf(Blocks.DEEPSLATE_BRICK_SLAB)
-                || state.isOf(Blocks.DEEPSLATE_BRICK_STAIRS)
-                || state.isOf(Blocks.DEEPSLATE_BRICK_WALL)
-                || state.isOf(Blocks.DEEPSLATE_TILES)
-                || state.isOf(Blocks.CRACKED_DEEPSLATE_TILES)
-                || state.isOf(Blocks.DEEPSLATE_TILE_SLAB)
-                || state.isOf(Blocks.DEEPSLATE_TILE_STAIRS)
-                || state.isOf(Blocks.DEEPSLATE_TILE_WALL);
     }
 
     private static void buildTrialPortalFrame(ServerWorld world, AncientCityTrialPortal.FrameTarget sourceFrame) {
