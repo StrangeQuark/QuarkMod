@@ -10,7 +10,9 @@ The main download is still `quarkmod`, which bundles all feature modules into on
 - `mods/grappling`: grappling hooks and the grappling crossbow.
 - `mods/excavator`: the Excavator pickaxe enchantment.
 - `mods/loot-tweaks`: spawner drops and spawn-egg chest loot.
-- `mods/large-villages`: large village world generation.
+- `mods/village-builder`: blueprint planning and city villager workstations.
+
+See [`mods/village-builder/README.md`](mods/village-builder/README.md) for blueprint-file setup and planner controls.
 
 The feature modules use their own Fabric mod IDs, such as `quarkmod_grappling` and `quarkmod_excavator`, but game registry IDs stay under the `quarkmod` namespace for compatibility. For example, the Excavator enchantment is still `quarkmod:excavator`.
 
@@ -28,7 +30,7 @@ Build one feature module:
 ./gradlew :grappling:build
 ./gradlew :excavator:build
 ./gradlew :loot-tweaks:build
-./gradlew :large-villages:build
+./gradlew :village-builder:build
 ```
 
 Build the all-in-one bundle:
@@ -51,7 +53,7 @@ Run one feature module by itself:
 ./gradlew runGrapplingClient
 ./gradlew runExcavatorClient
 ./gradlew runLootTweaksClient
-./gradlew runLargeVillagesClient
+./gradlew runVillageBuilderClient
 ```
 
 ## License

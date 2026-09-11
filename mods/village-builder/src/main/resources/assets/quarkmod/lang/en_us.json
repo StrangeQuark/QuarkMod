@@ -1,0 +1,14 @@
+{
+  "item.quarkmod.planner_wand": "Planner's Wand",
+  "block.quarkmod.builder_desk": "Builder Desk",
+  "block.quarkmod.miner_station": "Miner Station",
+  "entity.minecraft.villager.quarkmod.builder": "Builder",
+  "entity.minecraft.villager.quarkmod.miner": "Miner",
+  "itemGroup.quarkmod.village_builder": "Village Builder",
+  "message.quarkmod.village_builder.selected": "Selected blueprint: %s (%s x %s x %s)",
+  "message.quarkmod.village_builder.no_templates": "No blueprints are installed. Ask an operator to add .nbt or .litematic files, then run /villagebuilder reload.",
+  "message.quarkmod.village_builder.planned": "Planned %s.",
+  "message.quarkmod.village_builder.overlap": "That blueprint overlaps an existing plan.",
+  "message.quarkmod.village_builder.removed": "Removed your village plan.",
+  "message.quarkmod.village_builder.denied": "You may only remove your own plans."
+}
