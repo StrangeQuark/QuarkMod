@@ -8,7 +8,7 @@ The main download is still `quarkmod`, which bundles all feature modules into on
 
 - `mods/quarkmod`: the all-in-one QuarkMod bundle jar.
 - `mods/grappling`: grappling hooks and the grappling crossbow.
-- `mods/excavator`: the Excavator pickaxe enchantment.
+- `mods/excavator`: the Excavator pickaxe and shovel enchantment.
 - `mods/loot-tweaks`: spawner drops and spawn-egg chest loot.
 - `mods/village-builder`: blueprint planning and city villager workstations.
 

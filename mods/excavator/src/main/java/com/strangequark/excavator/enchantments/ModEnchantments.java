@@ -9,7 +9,7 @@ import net.minecraft.registry.RegistryEntryLookup;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.registry.entry.RegistryEntry;
-import net.minecraft.registry.tag.ItemTags;
+import net.minecraft.registry.tag.TagKey;
 import net.minecraft.util.Identifier;
 
 public class ModEnchantments {
@@ -20,7 +20,7 @@ public class ModEnchantments {
         RegistryEntryLookup<Item> items = registerable.getRegistryLookup(RegistryKeys.ITEM);
 
         register(registerable, EXCAVATOR, Enchantment.builder(Enchantment.definition(
-                items.getOrThrow(ItemTags.PICKAXES),
+                items.getOrThrow(TagKey.of(RegistryKeys.ITEM, ExcavatorMod.id("enchantable/excavator"))),
                 5,
                 1,
                 Enchantment.leveledCost(5, 7),
